@@ -8,6 +8,7 @@ use App\Enums\NotificationKind;
 use App\Models\AdministrativeCase;
 use App\Models\AdministrativeCaseItem;
 use App\Models\CaseStatus;
+use App\Models\ChecklistItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -132,13 +133,31 @@ class AdministrativeCaseItemService
                 ...$item->only(['name', 'description', 'priority', 'due_date', 'responsible_user_id', 'institution_id', 'notes', 'type', 'progress_weight', 'is_required_for_closure']),
                 'name' => $item->name.' (kopija)',
             ], $user);
-            if (method_exists($item, 'checklistItems')) {
-                foreach ($item->checklistItems as $checklistItem) {
-                    $copy->checklistItems()->create($checklistItem->only(['title', 'position']));
-                }
+            foreach ($item->checklistItems as $checklistItem) {
+                $copy->checklistItems()->create($checklistItem->only(['title', 'position']));
             }
 
             return $copy;
+        });
+    }
+
+    public function addChecklistItem(AdministrativeCaseItem $item, string $title): ChecklistItem
+    {
+        return $item->checklistItems()->create([
+            'title' => trim($title),
+            'position' => ((int) $item->checklistItems()->max('position')) + 1,
+        ]);
+    }
+
+    /** Nova pozicija stavke checkliste (drag & drop). */
+    public function moveChecklistItem(ChecklistItem $checklistItem, int $position): void
+    {
+        DB::transaction(function () use ($checklistItem, $position) {
+            $ids = $checklistItem->task->checklistItems()->whereKeyNot($checklistItem->id)->pluck('id')->all();
+            array_splice($ids, max(0, min($position, count($ids))), 0, [$checklistItem->id]);
+            foreach ($ids as $index => $id) {
+                ChecklistItem::whereKey($id)->update(['position' => $index + 1]);
+            }
         });
     }
 

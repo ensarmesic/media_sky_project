@@ -19,6 +19,8 @@
 </flux:sidebar>
 <flux:header class="lg:hidden"><flux:sidebar.toggle icon="bars-2" inset="left"/><flux:spacer/><flux:dropdown position="top" align="end"><flux:profile :initials="auth()->user()->initials()" icon-trailing="chevron-down"/><flux:menu><flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>Postavke</flux:menu.item><flux:menu.separator/><form method="POST" action="{{ route('logout') }}">@csrf<flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle">Odjava</flux:menu.item></form></flux:menu></flux:dropdown></flux:header>
 {{ $slot }}
+{{-- Detalj zadatka kao bočni panel dostupan na svim stranicama (event "open-task"). --}}
+@unless(request()->routeIs('tasks.show'))<livewire:task-drawer />@endunless
 @persist('toast')<flux:toast.group><flux:toast /></flux:toast.group>@endpersist
 @fluxScripts
 </body></html>

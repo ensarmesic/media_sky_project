@@ -3,14 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\CaseItemStatus;
-use App\Enums\DocumentDirection;
-use App\Enums\DocumentSyncStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\UserRole;
 use App\Models\AdministrativeCase;
 use App\Models\CaseStatus;
 use App\Models\CaseType;
-use App\Models\DocumentReference;
 use App\Models\Project;
 use App\Models\ProjectDocument;
 use App\Models\User;
@@ -78,29 +75,6 @@ class RegressionFixesTest extends TestCase
         $this->assertTrue($latest->fresh()->is_archived);
         $component->call('archiveDocument', $latest->id);
         $this->assertFalse($latest->fresh()->is_archived);
-    }
-
-    public function test_task_documents_are_prefilled_and_saved_from_task_panel(): void
-    {
-        [$admin, $project, $type, $status] = $this->setUpProject();
-        $case = $this->createCase($project, $admin, $type, $status);
-        $item = app(AdministrativeCaseItemService::class)->create($case, ['name' => 'Saglasnost'], $admin);
-        $this->actingAs($admin);
-        $reference = DocumentReference::create([
-            'project_id' => $project->id, 'external_system' => 'Interni protokol', 'external_document_id' => 'DOC-1',
-            'title' => 'Rješenje', 'direction' => DocumentDirection::Incoming, 'sync_status' => DocumentSyncStatus::Pending,
-        ]);
-
-        Livewire::test('pages::projects.show', ['project' => $project])
-            ->call('openItem', $item->id)
-            ->set('linkItemIds', [(string) $reference->id])
-            ->call('saveItem')
-            ->assertHasNoErrors()
-            ->call('closeItem')
-            ->call('openItem', $item->id)
-            ->assertSet('linkItemIds', [(string) $reference->id]);
-
-        $this->assertDatabaseHas('document_reference_items', ['document_reference_id' => $reference->id, 'administrative_case_item_id' => $item->id]);
     }
 
     public function test_link_validation_errors_are_shown_on_form_fields(): void

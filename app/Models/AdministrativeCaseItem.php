@@ -117,10 +117,15 @@ class AdministrativeCaseItem extends Model
         return $this->morphMany(Link::class, 'linkable');
     }
 
-    /** Link koji otvara projekat s otvorenim detaljima ovog zadatka. */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(ChecklistItem::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** Direktan link na detalj zadatka. */
     public function url(): string
     {
-        return route('projects.show', ['project' => $this->administrativeCase->project_id, 'zadatak' => $this->id]);
+        return route('tasks.show', $this->id);
     }
 
     public function documentReferences(): HasMany

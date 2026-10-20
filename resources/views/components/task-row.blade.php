@@ -2,8 +2,8 @@
 
 {{-- Jedan red zadatka (lista na /projekti, projekat, moji zadaci). Klik otvara detalj zadatka. --}}
 @php($isOverdue = $item->isOverdue())
-<a href="{{ $item->url() }}" wire:navigate
-    x-on:click="if (! $event.metaKey && ! $event.ctrlKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $dispatch('open-task', { id: {{ $item->id }} }) }"
+<a href="{{ $item->url() }}"
+    x-on:click="if (! $event.metaKey && ! $event.ctrlKey && ! $event.shiftKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $event.stopImmediatePropagation(); $dispatch('open-task', { id: {{ $item->id }} }) }"
     {{ $attributes->class('flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-zinc-50 focus:outline-none focus-visible:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:hover:bg-zinc-800/60 dark:focus-visible:bg-zinc-800/60') }}>
     <span class="min-w-0 flex-1">
         <span class="block truncate font-medium text-zinc-800 dark:text-zinc-100">{{ $item->name }}</span>

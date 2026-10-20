@@ -101,27 +101,6 @@ class ProjectWorkspaceTest extends TestCase
         $this->assertSame(CaseItemStatus::New, $other->fresh()->status);
     }
 
-    public function test_task_panel_saves_changes_and_comments(): void
-    {
-        [$manager, $project, $case] = $this->projectWithCase();
-        $item = app(AdministrativeCaseItemService::class)->create($case, ['name' => 'Saglasnost'], $manager);
-        $this->actingAs($manager);
-
-        Livewire::test('pages::projects.show', ['project' => $project])
-            ->call('openItem', $item->id)
-            ->set('itemForm.status', CaseItemStatus::Waiting->value)
-            ->set('itemForm.due_date', today()->addDays(3)->toDateString())
-            ->call('saveItem')
-            ->assertHasNoErrors()
-            ->set('itemNote', 'Pozvati instituciju u ponedjeljak')
-            ->call('addItemNote')
-            ->assertSee('Pozvati instituciju u ponedjeljak');
-
-        $item->refresh();
-        $this->assertSame(CaseItemStatus::Waiting, $item->status);
-        $this->assertSame(today()->addDays(3)->toDateString(), $item->due_date->toDateString());
-    }
-
     public function test_task_link_opens_project_with_task_panel(): void
     {
         [$manager, $project, $case] = $this->projectWithCase();

@@ -13,6 +13,11 @@ class AdministrativeCaseItemPolicy
         return $user->isAdministrator() ? true : null;
     }
 
+    public function view(User $user, AdministrativeCaseItem $item): bool
+    {
+        return $item->responsible_user_id === $user->id || $user->can('view', $item->administrativeCase);
+    }
+
     /**
      * Zadatak može ažurirati onaj ko upravlja predmetom ili osoba kojoj je zadatak dodijeljen
      * (status, datumi, napomene) — pregledači nikada.

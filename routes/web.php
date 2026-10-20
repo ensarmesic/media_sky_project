@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect($case->url());
     })->name('cases.show');
 
+    Route::livewire('zadaci/{item}', 'pages::tasks.show')->name('tasks.show');
     Route::livewire('moji-zadaci', 'pages::my-tasks.index')->name('my-tasks.index');
     Route::livewire('obavijesti', 'pages::notifications.index')->name('notifications.index');
 });

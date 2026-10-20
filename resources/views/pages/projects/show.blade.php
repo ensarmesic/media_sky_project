@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -47,12 +48,6 @@ new #[Title('Projekat')] class extends Component {
     /** @var array<int, array<string, string>> */
     public array $newTask = [];
 
-    // Panel zadatka
-    #[Url(as: 'zadatak', except: null)]
-    public ?int $selectedItemId = null;
-    public array $itemForm = [];
-    public string $itemNote = '';
-    public array $linkItemIds = [];
 
     // Modal predmeta (novi ili izmjena)
     public bool $showCaseModal = false;
@@ -88,9 +83,6 @@ new #[Title('Projekat')] class extends Component {
         $this->project = $project;
         $this->refreshProject();
 
-        if ($this->selectedItemId !== null) {
-            $this->openItem($this->selectedItemId);
-        }
     }
 
     // ---------------------------------------------------------------- Prikaz
@@ -142,6 +134,13 @@ new #[Title('Projekat')] class extends Component {
             'overdue' => $items->filter->isOverdue()->count(),
             'mine' => $items->filter(fn (AdministrativeCaseItem $item) => $item->responsible_user_id === auth()->id() && $item->isOpen())->count(),
         ];
+    }
+
+    /** Osvježavanje nakon izmjene u detalju zadatka (drawer). */
+    #[On('task-updated')]
+    public function refreshAfterTaskChange(): void
+    {
+        $this->refreshProject();
     }
 
     public function toggleCase(int $caseId): void
@@ -319,92 +318,6 @@ new #[Title('Projekat')] class extends Component {
         $this->refreshProject();
     }
 
-    public function openItem(int $itemId): void
-    {
-        $item = $this->project->administrativeCases->flatMap->items->firstWhere('id', $itemId);
-        if ($item === null) {
-            $this->selectedItemId = null;
-
-            return;
-        }
-
-        $this->resetValidation();
-        $this->selectedItemId = $item->id;
-        $this->itemNote = '';
-        $this->itemForm = [
-            'name' => $item->name, 'status' => $item->status->value,
-            'responsible_user_id' => (string) ($item->responsible_user_id ?? ''),
-            'due_date' => $item->due_date?->format('Y-m-d') ?? '',
-            'institution_id' => (string) ($item->institution_id ?? ''),
-            'submitted_at' => $item->submitted_at?->format('Y-m-d') ?? '',
-            'response_at' => $item->response_at?->format('Y-m-d') ?? '',
-            'outcome' => $item->outcome?->value ?? '',
-            'response_reminder_interval' => (string) ($item->response_reminder_interval ?? ''),
-            'notes' => $item->notes ?? '',
-        ];
-        $this->linkItemIds = $item->linkedDocumentReferences()->pluck('document_references.id')->map(fn ($id) => (string) $id)->all();
-    }
-
-    public function closeItem(): void
-    {
-        $this->reset('selectedItemId', 'itemForm', 'itemNote', 'linkItemIds');
-        $this->resetValidation();
-    }
-
-    public function saveItem(AdministrativeCaseItemService $service): void
-    {
-        $item = $this->findItem($this->selectedItemId);
-        Gate::authorize('update', $item);
-        $data = $this->validate([
-            'itemForm.name' => ['required', 'string', 'max:255'],
-            'itemForm.status' => ['required', Rule::enum(CaseItemStatus::class)],
-            'itemForm.responsible_user_id' => ['nullable', 'exists:users,id'],
-            'itemForm.due_date' => ['nullable', 'date'],
-            'itemForm.institution_id' => ['nullable', 'exists:institutions,id'],
-            'itemForm.submitted_at' => ['nullable', 'date'],
-            'itemForm.response_at' => ['nullable', 'date'],
-            'itemForm.outcome' => ['nullable', Rule::enum(CaseOutcome::class)],
-            'itemForm.response_reminder_interval' => ['nullable', 'integer', 'between:1,365'],
-            'itemForm.notes' => ['nullable', 'string', 'max:2000'],
-            'linkItemIds' => ['array'],
-            'linkItemIds.*' => [Rule::exists('document_references', 'id')->where('project_id', $this->project->id)],
-        ]);
-
-        $service->update($item, $data['itemForm'], auth()->user());
-        $item->linkedDocumentReferences()->sync($data['linkItemIds'] ?? []);
-        $this->refreshProject();
-        $this->openItem($item->id);
-        Flux::toast('Zadatak je sačuvan.', variant: 'success');
-    }
-
-    public function addItemNote(\App\Services\CommentService $comments): void
-    {
-        $item = $this->findItem($this->selectedItemId);
-        Gate::authorize('update', $item);
-        $this->validate(['itemNote' => ['required', 'string', 'max:2000']], attributes: ['itemNote' => 'komentar']);
-        $comments->create($item, auth()->user(), $this->itemNote);
-        $this->itemNote = '';
-        $this->refreshProject();
-    }
-
-    public function moveItem(int $itemId, string $direction, AdministrativeCaseItemService $service): void
-    {
-        $item = $this->findItem($itemId);
-        Gate::authorize('update', $item->administrativeCase);
-        $service->movePosition($item, $direction === 'up' ? 'up' : 'down');
-        $this->refreshProject();
-    }
-
-    public function removeItem(int $itemId, AdministrativeCaseItemService $service): void
-    {
-        $item = $this->findItem($itemId);
-        Gate::authorize('update', $item->administrativeCase);
-        $service->deactivate($item, auth()->user());
-        $this->closeItem();
-        $this->refreshProject();
-        Flux::toast('Zadatak je uklonjen.');
-    }
-
     // ------------------------------------------------------------- Dokumenti
 
     public function uploadDocument(DocumentService $service): void
@@ -506,10 +419,6 @@ new #[Title('Projekat')] class extends Component {
             'caseTypes' => CaseType::where('is_active', true)->orderBy('name')->get(),
             'caseStatuses' => CaseStatus::where('is_active', true)->orderBy('position')->get(),
             'templates' => $this->showCaseModal ? CaseTemplate::where('is_active', true)->withCount('items')->orderBy('name')->get() : collect(),
-            'selectedItem' => $this->selectedItemId
-                ? $this->project->administrativeCases->flatMap->items->firstWhere('id', $this->selectedItemId)
-                    ?->loadMissing(['administrativeCase', 'activities' => fn ($query) => $query->latest()->latest('id'), 'activities.user', 'comments' => fn ($query) => $query->latest()->latest('id'), 'comments.user'])
-                : null,
         ];
     }
 
@@ -711,13 +620,13 @@ new #[Title('Projekat')] class extends Component {
                                 {{-- Isto pravilo kao AdministrativeCaseItemPolicy, bez dodatnog upita po redu --}}
                                 @php($canEditItem = $canEditCase || ($item->responsible_user_id === auth()->id() && auth()->user()->role !== App\Enums\UserRole::Viewer))
                                 @php($isDone = $item->status === CaseItemStatus::Completed)
-                                <div wire:key="item-{{ $item->id }}" @class(['group flex items-center gap-3 border-b border-zinc-100 px-4 py-2.5 last:border-0 dark:border-zinc-800', 'bg-blue-50/60 dark:bg-blue-950/20' => $selectedItemId === $item->id])>
+                                <div wire:key="item-{{ $item->id }}" @class(['group flex items-center gap-3 border-b border-zinc-100 px-4 py-2.5 last:border-0 dark:border-zinc-800', 'bg-blue-50/60 dark:bg-blue-950/20' => false])>
                                     <button type="button" @if($canEditItem) wire:click="toggleComplete({{ $item->id }})" @else disabled @endif
                                         @class(['flex size-5 shrink-0 items-center justify-center rounded-full border-2', 'border-emerald-500 bg-emerald-500 text-white' => $isDone, 'border-zinc-300 hover:border-emerald-500 dark:border-zinc-600' => ! $isDone])
                                         title="{{ $isDone ? 'Ponovo otvori' : 'Označi završenim' }}">
                                         @if($isDone)<flux:icon.check variant="micro" class="size-3.5" />@endif
                                     </button>
-                                    <button type="button" wire:click="openItem({{ $item->id }})" class="min-w-0 flex-1 text-left">
+                                    <button type="button" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="min-w-0 flex-1 text-left">
                                         <div @class(['truncate text-sm', 'text-zinc-400 line-through' => $isDone, 'font-medium' => ! $isDone])>{{ $item->name }}</div>
                                         <div class="mt-0.5 flex flex-wrap gap-x-2 text-xs text-zinc-500">
                                             <span>{{ $item->responsible?->name ?? 'Nije dodijeljeno' }}</span>
@@ -895,99 +804,6 @@ new #[Title('Projekat')] class extends Component {
                 @endforelse
             </div>
         </section>
-    @endif
-
-    {{-- ================================================== PANEL: DETALJI ZADATKA --}}
-    @if($selectedItem)
-        @php($canEditItem = auth()->user()->can('update', $selectedItem))
-        <div class="fixed inset-0 z-40 bg-black/20" wire:click="closeItem"></div>
-        <aside class="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900" aria-label="Detalji zadatka">
-            <div class="flex items-start justify-between gap-3 border-b border-zinc-200 p-5 dark:border-zinc-800">
-                <div class="min-w-0">
-                    <div class="text-xs text-zinc-500">{{ $selectedItem->administrativeCase->name }}</div>
-                    <flux:heading size="lg" class="mt-0.5">{{ $selectedItem->name }}</flux:heading>
-                </div>
-                <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="closeItem" aria-label="Zatvori" />
-            </div>
-
-            <form wire:submit="saveItem" class="space-y-4 p-5">
-                <fieldset @disabled(! $canEditItem) class="space-y-4">
-                    <flux:input wire:model="itemForm.name" label="Naziv zadatka" />
-                    <div class="grid grid-cols-2 gap-3">
-                        <flux:select wire:model="itemForm.status" label="Status">@foreach(CaseItemStatus::cases() as $statusOption)<option value="{{ $statusOption->value }}">{{ $statusOption->label() }}</option>@endforeach</flux:select>
-                        <flux:input wire:model="itemForm.due_date" type="date" label="Rok" />
-                    </div>
-                    <flux:select wire:model="itemForm.responsible_user_id" label="Odgovorna osoba"><option value="">Nije dodijeljeno</option>@foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</flux:select>
-                    <flux:textarea wire:model="itemForm.notes" label="Opis / napomena" rows="3" />
-
-                    <details class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700" @if(($itemForm['institution_id'] ?? '') !== '' || ($itemForm['submitted_at'] ?? '') !== '') open @endif>
-                        <summary class="cursor-pointer text-sm font-medium">Predaja instituciji i odgovor</summary>
-                        <div class="mt-3 space-y-3">
-                            <flux:select wire:model="itemForm.institution_id" label="Institucija"><option value="">Bez institucije</option>@foreach($institutions as $institution)<option value="{{ $institution->id }}">{{ $institution->name }}</option>@endforeach</flux:select>
-                            <div class="grid grid-cols-2 gap-3">
-                                <flux:input wire:model="itemForm.submitted_at" type="date" label="Datum predaje" />
-                                <flux:input wire:model="itemForm.response_at" type="date" label="Datum odgovora" />
-                            </div>
-                            <flux:select wire:model="itemForm.outcome" label="Ishod"><option value="">Nije utvrđen</option>@foreach(CaseOutcome::cases() as $outcome)<option value="{{ $outcome->value }}">{{ $outcome->label() }}</option>@endforeach</flux:select>
-                            <flux:input wire:model="itemForm.response_reminder_interval" type="number" min="1" max="365" label="Podsjeti dok čeka odgovor (svakih X dana)" />
-                        </div>
-                    </details>
-
-                    @php($availableReferences = $project->documentReferences->where('is_archived', false))
-                    @if($availableReferences->isNotEmpty())
-                        <details class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700" @if($linkItemIds !== []) open @endif>
-                            <summary class="cursor-pointer text-sm font-medium">Povezani dokumenti ({{ count($linkItemIds) }})</summary>
-                            <div class="mt-3 space-y-1">
-                                @foreach($availableReferences as $reference)
-                                    <label class="flex items-center gap-2 text-sm" wire:key="link-ref-{{ $reference->id }}"><input type="checkbox" wire:model="linkItemIds" value="{{ $reference->id }}" class="rounded" /> {{ $reference->title }}{{ $reference->protocol_number ? ' ('.$reference->protocol_number.')' : '' }}</label>
-                                @endforeach
-                            </div>
-                        </details>
-                    @endif
-                </fieldset>
-
-                @if($canEditItem)
-                    <div class="flex items-center justify-between gap-2">
-                        @can('update', $selectedItem->administrativeCase)
-                            <div class="flex gap-1">
-                                <flux:button type="button" size="sm" variant="ghost" icon="arrow-up" wire:click="moveItem({{ $selectedItem->id }}, 'up')" aria-label="Pomjeri gore" />
-                                <flux:button type="button" size="sm" variant="ghost" icon="arrow-down" wire:click="moveItem({{ $selectedItem->id }}, 'down')" aria-label="Pomjeri dolje" />
-                                <flux:button type="button" size="sm" variant="ghost" icon="trash" wire:click="removeItem({{ $selectedItem->id }})" wire:confirm="Ukloniti zadatak?" aria-label="Ukloni zadatak" />
-                            </div>
-                        @else
-                            <span></span>
-                        @endcan
-                        <flux:button type="submit" variant="primary">Sačuvaj</flux:button>
-                    </div>
-                @endif
-            </form>
-
-            <div class="border-t border-zinc-200 p-5 dark:border-zinc-800">
-                <flux:heading size="sm">Komentari i istorija</flux:heading>
-                @if($canEditItem)
-                    <form wire:submit="addItemNote" class="mt-3 flex items-start gap-2">
-                        <div class="flex-1"><flux:input wire:model="itemNote" size="sm" placeholder="Dodaj komentar…" /><flux:error name="itemNote" /></div>
-                        <flux:button type="submit" size="sm">Dodaj</flux:button>
-                    </form>
-                @endif
-                <div class="mt-4 space-y-3">
-                    @foreach($selectedItem->comments as $comment)
-                        <div class="text-sm" wire:key="item-comment-{{ $comment->id }}">
-                            <div><span class="font-medium">{{ $comment->user->name }}</span> <span class="text-xs text-zinc-400">· {{ $comment->created_at->format('d.m.Y. H:i') }}</span></div>
-                            <div class="whitespace-pre-line text-zinc-600 dark:text-zinc-300">{{ $comment->body }}</div>
-                        </div>
-                    @endforeach
-                    @forelse($selectedItem->activities as $activity)
-                        <div class="text-sm" wire:key="item-activity-{{ $activity->id }}">
-                            <div><span class="font-medium">{{ $activity->title }}</span> <span class="text-xs text-zinc-400">· {{ $activity->user?->name ?? 'Sistem' }}, {{ $activity->created_at->format('d.m.Y. H:i') }}</span></div>
-                            @if($activity->description)<div class="text-zinc-600 dark:text-zinc-300">{{ $activity->description }}</div>@endif
-                        </div>
-                    @empty
-                        <flux:text size="sm">Nema zapisa.</flux:text>
-                    @endforelse
-                </div>
-            </div>
-        </aside>
     @endif
 
     {{-- ==================================================== MODAL: PREDMET --}}
