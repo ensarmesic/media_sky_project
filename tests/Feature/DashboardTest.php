@@ -29,8 +29,8 @@ class DashboardTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => UserRole::Administrator]));
 
-        $this->get(route('projects.index'))->assertOk()->assertSee('Moji zadaci');
-        foreach (['projects.create', 'my-tasks.index', 'notifications.index'] as $route) {
+        $this->get(route('projects.index'))->assertOk()->assertSee('Moje stavke');
+        foreach (['projects.create', 'my-tasks.index', 'notifications.index', 'help'] as $route) {
             $this->get(route($route))->assertOk();
         }
     }
