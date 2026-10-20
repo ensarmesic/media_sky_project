@@ -76,6 +76,13 @@ new #[Title('Dokumenti projekta')] class extends Component {
             ->paginate(25);
     }
 
+    public function delete(int $documentId, \App\Services\DocumentService $service): void
+    {
+        $service->delete($this->project->documents()->whereNull('replaced_by_id')->findOrFail($documentId), auth()->user());
+        unset($this->documents);
+        \Flux\Flux::toast('Dokument je obrisan.');
+    }
+
     public function clearFilters(): void
     {
         $this->reset('search', 'caseId', 'direction', 'type');
@@ -147,6 +154,7 @@ new #[Title('Dokumenti projekta')] class extends Component {
                 <div class="flex shrink-0 gap-1">
                     <flux:button size="sm" variant="ghost" icon="eye" :href="route('documents.show', $document)" target="_blank" aria-label="Otvori {{ $document->name }}" />
                     <flux:button size="sm" variant="ghost" icon="arrow-down-tray" :href="route('documents.download', $document)" aria-label="Preuzmi {{ $document->name }}" />
+                    @can('delete', $document)<flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $document->id }})" wire:confirm="Obrisati dokument „{{ $document->name }}“ i sve njegove verzije?" aria-label="Obriši {{ $document->name }}" />@endcan
                 </div>
             </div>
         @empty

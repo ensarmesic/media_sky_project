@@ -91,6 +91,7 @@
 <livewire:global-search />
 {{-- Detalj stavke kao bočni panel dostupan na svim stranicama (event "open-task"). --}}
 @unless(request()->routeIs('tasks.show'))<livewire:task-drawer />@endunless
+<livewire:case-drawer />
 @persist('toast')<flux:toast.group><flux:toast /></flux:toast.group>@endpersist
 @fluxScripts
 </body></html>

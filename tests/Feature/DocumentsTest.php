@@ -129,6 +129,50 @@ class DocumentsTest extends TestCase
             ->set('direction', '')->set('search', '03-23')->assertSee('zahtjev.pdf')->assertDontSee('dopis.pdf');
     }
 
+    public function test_case_drawer_uploads_to_case_and_lists_documents_from_items(): void
+    {
+        $this->storeDocument('dokument-stavke.pdf');
+        $case = $this->item->administrativeCase;
+        $this->actingAs($this->manager);
+
+        Livewire::test('documents', ['ownerType' => 'case', 'ownerId' => $case->id])
+            ->set('upload', UploadedFile::fake()->create('rjesenje.pdf', 40))->call('saveUpload')->assertHasNoErrors();
+
+        Livewire::test('case-drawer')
+            ->call('open', $case->id)
+            ->assertSee('Urbanistička saglasnost')
+            ->assertSee('rjesenje.pdf')
+            ->assertSee('dokument-stavke.pdf')
+            ->assertSee('Stavka: Saglasnost EPBiH');
+
+        $this->assertSame(1, $case->documents()->count());
+    }
+
+    public function test_project_level_upload_and_delete_from_documents_page(): void
+    {
+        $this->actingAs($this->manager);
+        Livewire::test('documents', ['ownerType' => 'project', 'ownerId' => $this->project->id, 'showList' => false])
+            ->set('upload', UploadedFile::fake()->create('ugovor.pdf', 40))->call('saveUpload')->assertHasNoErrors();
+        $document = $this->project->ownDocuments()->firstOrFail();
+
+        Livewire::test('pages::projects.documents', ['project' => $this->project])
+            ->assertSee('ugovor.pdf')->assertSee('Projekat')
+            ->call('delete', $document->id)
+            ->assertDontSee('ugovor.pdf');
+    }
+
+    public function test_member_without_rights_cannot_upload(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $this->project->members()->attach($viewer, ['role' => 'member']);
+        $this->actingAs($viewer);
+
+        Livewire::test('documents', ['ownerType' => 'item', 'ownerId' => $this->item->id])
+            ->assertDontSee('Prevucite fajlove')
+            ->set('upload', UploadedFile::fake()->create('x.pdf', 10))->call('saveUpload')
+            ->assertForbidden();
+    }
+
     private function storeDocument(string $name = 'zahtjev.pdf', array $attributes = []): ProjectDocument
     {
         $path = 'project-documents/'.$this->project->id.'/'.$name;

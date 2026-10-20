@@ -523,11 +523,13 @@ new #[Title('Projekat')] class extends Component {
                                     @endif
                                 </div>
                                 <div class="flex shrink-0 items-center gap-1">
+                                    <button type="button" x-on:click="$dispatch('open-case', { id: {{ $case->id }} })" class="pf-icon-button" aria-label="Dokumenti i komentari postupka {{ $case->name }}" title="Dokumenti i komentari"><flux:icon.paper-clip variant="mini" class="size-4" /></button>
                                     @if($canEditCase)
                                         <flux:dropdown align="end">
                                             <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" aria-label="Opcije postupka" />
                                             <flux:menu>
                                                 <flux:menu.item icon="pencil-square" wire:click="openCaseModal({{ $case->id }})">Uredi postupak</flux:menu.item>
+                                                <flux:menu.item icon="paper-clip" x-on:click="$dispatch('open-case', { id: {{ $case->id }} })">Dokumenti i komentari</flux:menu.item>
                                                 <flux:menu.item icon="archive-box" wire:click="archiveCase({{ $case->id }})" wire:confirm="Arhivirati postupak? Stavke i istorija ostaju sačuvane.">Arhiviraj</flux:menu.item>
                                             </flux:menu>
                                         </flux:dropdown>
