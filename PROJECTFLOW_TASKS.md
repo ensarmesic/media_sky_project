@@ -1,144 +1,167 @@
 # ProjectFlow – plan nadogradnje
 
-Ovaj fajl stavi u root projekta. U Claude Code napiši: "Pročitaj PROJECTFLOW_TASKS.md i radi task po task. Počni od Taska 0."
+Sačuvaj referentni dizajn kao `docs/dizajn-projekat.png` u projektu.
+Ovaj fajl stavi u root projekta.
+U Claude Code napiši: "Pročitaj PROJECTFLOW_TASKS.md i pogledaj docs/dizajn-projekat.png. Radi task po task, počni od Taska 0."
 
 ## Pravila rada (vrijede za sve taskove)
 
-- Prvo istraži postojeći kod. Ne pretpostavljaj stack ni nazive. Prilagodi se postojećim modelima, rutama, stilu i komponentama.
-- Jedan task po jedan. Kad završiš task, napravi kratak sažetak (šta je promijenjeno, koji fajlovi) i commit s porukom `TASK N: <naslov>`. Onda stani i čekaj moju potvrdu prije sljedećeg taska.
-- Ne briši postojeće podatke. Migracije moraju biti aditivne. Ako nešto mora da se preimenuje ili obriše, prvo me pitaj.
-- UI je na bosanskom jeziku. Kod (varijable, klase, kolone) ostaje u stilu koji projekat već koristi.
-- Zadrži postojeći izgled (tamna tema, plavi akcent, sidebar). Nove stvari trebaju izgledati kao da su oduvijek bile tu.
-- Autorizacija svuda. Korisnik vidi i mijenja samo ono čemu ima pristup (projekti kojih je član ili admin).
-- Nakon svakog taska pokreni postojeće testove i lint. Ako nešto pukne, popravi prije commita.
-- Ako nešto u ovom planu nije jasno ili se kosi s postojećim kodom, pitaj me umjesto da nagađaš.
+- Referentni dizajn je `docs/dizajn-projekat.png`. Raspored, hijerarhija, boje statusa i gustina informacija trebaju odgovarati slici. Kad nisi siguran kako nešto treba izgledati, pogledaj sliku.
+- Prvo istraži postojeći kod. Ne pretpostavljaj stack ni nazive. Prilagodi se postojećim modelima, rutama i komponentama.
+- Terminologija: postojeći Predmet = **Postupak** u UI-ju, postojeći Zadatak = **Stavka** u UI-ju. Ako u kodu već postoje drugačiji odnosi, javi mi u Tasku 0 prije nego išta mijenjaš.
+- Jedan task po jedan. Nakon taska napiši kratak sažetak (šta je promijenjeno, koji fajlovi), napravi commit `TASK N: <naslov>`, pa stani i čekaj moju potvrdu.
+- Ne briši postojeće podatke. Migracije su aditivne. Za preimenovanje ili brisanje kolona prvo me pitaj.
+- UI je na bosanskom jeziku, datumi u formatu dd.mm.yyyy.
+- Autorizacija svuda. Korisnik vidi samo projekte kojih je član ili ako je admin.
+- Nakon svakog taska pokreni testove i lint i popravi sve što pukne prije commita.
+- Ako je nešto nejasno ili se kosi s postojećim kodom, pitaj me umjesto da nagađaš.
 
-## TASK 0 – Analiza i plan
+## TASK 0 – Analiza i plan (bez izmjena koda)
 
-- Utvrdi stack (framework, frontend, baza, auth, kako se renderuje /projekti).
-- Mapiraj postojeće modele: Projekat, Predmet, Zadatak, Korisnik, Obavijest i njihove relacije i statuse.
-- Pronađi zašto se zaglavlje tabele na /projekti prikazuje vertikalno (PROJEKAT, STATUS... jedno ispod drugog).
-- Izlaz: kratak izvještaj + lista šta od taskova ispod već postoji, šta treba dodati i koje migracije planiraš. Ne mijenjaj kod u ovom tasku.
+- Utvrdi stack, auth, način renderovanja i postojeće modele i relacije (Projekat, Predmet, Zadatak, Korisnik, Obavijest).
+- Uporedi postojeće stanje s referentnim dizajnom i ovim planom.
+- Pronađi zašto se zaglavlje tabele na /projekti prikazuje vertikalno.
+- Izlaz: izvještaj s listom šta postoji, šta fali, planirane migracije i mapiranje Predmet→Postupak, Zadatak→Stavka.
 
 ## TASK 1 – Model podataka
 
-Proširi (ili dodaj ako ne postoji):
+**Projekat** (dodati šta fali)
+- naziv, opis (npr. "Podzemna optička mreža – GPON"), lokacija, kategorija (npr. Telekomunikacije), datum_pocetka, datum_zavrsetka
+- status: nije_pokrenuto, u_toku, na_cekanju, zavrseno, arhivirano
+- rucna_procjena (0–100, ručno se postavlja)
+- trenutno_stanje (kratak tekst), sljedeci_korak (kratak tekst)
+- Članovi projekta (pivot): korisnik + uloga (voditelj, clan)
 
-**Zadatak**
-- status: novo, u_toku, na_cekanju, na_pregledu, zavrseno, otkazano
-- prioritet: nizak, srednji, visok, hitno
-- rok (datum, nullable)
-- dodijeljen_korisnik_id (nullable)
-- predmet_id
-- pozicija (int, za redoslijed na ploči)
-- zavrseno_at (timestamp, nullable; postavlja se automatski kad status pređe u zavrseno)
+**Postupak** (postojeći Predmet)
+- naziv, institucija (npr. Općina Banovići, JP EPBiH), ikona/tip (opcionalno), pozicija
+- Status postupka se izračunava iz stavki: sve završene → Završeno; ima "Čeka odgovor" → Čeka odgovor; ima u toku/u pripremi/predato → U toku; ništa nije pokrenuto → Nije pokrenuto.
 
-**Komentar** – polimorfan (može na zadatak ili predmet): korisnik_id, tekst, edited_at, soft delete.
+**Stavka** (postojeći Zadatak)
+- redni_broj, naziv, institucija_primalac
+- status: nije_pokrenuto, u_pripremi, predato, ceka_odgovor, potrebna_dopuna, zavrseno, otkazano
+- rok, datum_predaje, datum_odgovora (nullable)
+- odgovorna_osoba_id, opis, pozicija
+- Automatski: prelaz u predato postavlja datum_predaje ako je prazan; prelaz u zavrseno ili unos odgovora postavlja datum_odgovora.
 
-**Prilog** – polimorfan (zadatak, predmet ili komentar): korisnik_id, originalni_naziv, putanja, mime, velicina.
+**Dokument** (polimorfan: projekat, postupak, stavka, komentar)
+- naziv, smjer (izlazni, ulazni, interni), broj_protokola (npr. 03-23-456/26), datum_dokumenta, verzija, originalni_naziv, putanja, mime, velicina, korisnik_id
+- Nova verzija istog dokumenta čuva i stare verzije.
 
-**Link** – polimorfan (zadatak ili predmet): korisnik_id, naslov, url.
+**Komentar** (polimorfan: stavka, postupak) i **Link** (polimorfan: stavka, postupak, projekat).
 
-**Aktivnost** – log: korisnik_id, subjekt (polimorfno), akcija, podaci (JSON: staro/novo).
+**Aktivnost** – log: korisnik, subjekt (polimorfno), akcija, podaci (JSON staro/novo).
 
-- Izračunato "kasni": rok < danas i status nije zavrseno ili otkazano.
-- Centralizuj statuse i prioritete na jednom mjestu (enum/konstante) s labelama na bosanskom i bojama.
-- Dodaj seeder s realnim demo podacima (2–3 projekta, nekoliko predmeta, zadaci u svim fazama, par komentara i linkova).
+Izračunato:
+- Administrativni napredak projekta = završene stavke / sve stavke (bez otkazanih), u %.
+- Kasni = rok prošao, a stavka nije završena ili otkazana.
+- Dana čeka odgovor = danas − datum_predaje za stavke u ceka_odgovor.
 
-Gotovo kad: migracije prolaze na čistoj i postojećoj bazi, a postojeći podaci ostaju netaknuti.
+Statuse s labelama i bojama drži na jednom mjestu (enum/konstante). Boje prema slici: Završeno zeleno, Čeka odgovor narandžasto, Predato i U toku plavo, U pripremi svijetloplavo, Nije pokrenuto sivo, Potrebna dopuna crveno.
 
-## TASK 2 – Nova stranica /projekti (glavni prikaz)
+Seeder: projekat "FTTH Banovići" s postupcima i stavkama kao na slici, plus još 2 projekta.
 
-Zamijeni trenutnu tabelu jednostavnim prikazom:
+## TASK 2 – Layout aplikacije
 
-- Grupisano po projektu – naziv projekta je mali naslov (lokacija ispod, sitno), klik vodi na detalje projekta.
-- Ispod su kartice predmeta u gridu (responsive: 1 kolona na mobitelu, 2–3 na desktopu).
-- Svaka kartica: naziv predmeta, broj aktivnih zadataka, tanak progress bar (završeno/ukupno), i lista aktivnih zadataka (svi osim zavrseno i otkazano).
-- Red zadatka: naziv, chip statusa (u boji), avatar dodijeljenog, rok (crveno ako kasni), ikonica ako ima priloge ili komentare (s brojem).
-- Predmeti bez aktivnih zadataka se ne prikazuju (prekidač "Prikaži i završene predmete").
-- Klik na zadatak otvara detalj zadatka (Task 3).
-- Gore: pretraga (naziv projekta, predmeta ili zadatka), filter chipovi po fazi (Sve / U toku / Na čekanju / Na pregledu / Kasni), filter "Samo moji", filter po projektu.
-- Filteri i pretraga idu u URL query parametre (da se može podijeliti link i da back radi).
-- Dugme "+ Dodaj zadatak" na svakoj kartici predmeta (brzi unos: samo naziv + Enter, status novo).
-- Prazno stanje: "Nema aktivnih zadataka" + dugme za dodavanje.
-- Bez N+1 upita (eager loading, count upiti).
+Prema slici:
+- Lijevi sidebar: logo, Projekti, Postavke; sekcija PROJEKTI s filterima i brojačima: Svi projekti, U toku, Na čekanju, Završeni, Arhivirani; Pomoć na dnu.
+- Gornja traka: globalna pretraga (Ctrl+K pretražuje projekte, postupke, stavke i dokumente), zvono s brojem nepročitanih obavijesti, avatar s imenom i menijem.
+- Svijetla tema kao na slici. Ako aplikacija već ima tamnu temu, zadrži prekidač teme i napravi da obje izgledaju dobro.
+- Responsive: na mobitelu sidebar postaje meni, a desna kolona projekta ide ispod glavnog sadržaja.
 
-Gotovo kad: stranica se učitava brzo i s 50+ zadataka, filteri rade, a stari bug sa zaglavljem je nestao.
+## TASK 3 – Lista projekata /projekti
 
-## TASK 3 – Detalj zadatka
+Jednostavna i pregledna lista, bez stare tabele:
+- Kartica ili red po projektu: naziv, opis, lokacija, status (chip), administrativni napredak (progress bar + %), period, avatari članova.
+- Ispod naziva prikaži samo ono što traži pažnju (max 3 stavke: kasni, čeka odgovor dugo, rok uskoro). Ako nema ništa, ne prikazuj.
+- Pretraga, filter po statusu (veže se na sidebar), sortiranje (posljednja aktivnost, rok, naziv).
+- Filteri u URL query parametrima.
+- Dugme "+ Dodaj projekat".
 
-Otvara se kao bočni panel (drawer) sa stranice projekata, a ima i svoju URL adresu (/zadaci/{id}) za direktan link.
+## TASK 4 – Detalj projekta (glavni ekran, prema slici)
 
-- Naslov (edit inline), opis (višelinijski, linkovi u tekstu klikabilni).
-- Polja uz bok: status, prioritet, dodijeljeni korisnik, rok, predmet/projekat (breadcrumb).
-- Promjena polja se snima odmah (bez dugmeta "Spremi"), uz kratku potvrdu.
-- Checklist (podzadaci): dodaj, štikliraj, obriši, promijeni redoslijed; prikaz "3/5".
-- Sekcije ispod: Prilozi (Task 5), Linkovi (Task 6), Komentari i aktivnost (Task 4 i 7).
-- Dugmad: "Označi završenim", "Dupliciraj", "Obriši" (uz potvrdu).
+**Zaglavlje**
+- Breadcrumb (Projekti > naziv), naziv s ikonom olovke za uređivanje, opis.
+- Chipovi: lokacija, kategorija, period.
+- Desno: dropdown "Status projekta", Administrativni napredak (auto progress bar + %), Ručna procjena stanja (progress bar, klik otvara slider za promjenu).
 
-## TASK 4 – Komentari
+**Glavni dio – "Postupci u projektu"**
+- Filter tabovi s brojačima: Svi, U toku, Čeka odgovor, Završeno, Nije pokrenuto.
+- Dugme "+ Dodaj postupak".
+- Svaki postupak je harmonika (accordion): ikona, naziv, institucija, "6 / 10 stavki" + progress bar + %, status chip, "Posljednja aktivnost" (datum + opis), strelica za otvaranje.
+- Otvoren postupak prikazuje tabelu stavki: #, Stavka, Status, Institucija/primalac, Rok, Predaja, Odgovor, Dokumenti (ikona + broj, klik otvara dokumente stavke), Odgovorna osoba (avatar + ime), Akcije (⋯ meni: uredi, promijeni status, dodaj dokument, dupliciraj, obriši).
+- Status u tabeli se mijenja klikom na chip (dropdown), bez otvaranja stavke.
+- Rok crvenom ako kasni, narandžastom ako je za ≤3 dana.
+- Red "+ Dodaj stavku" na dnu tabele (brzi unos naziva).
+- Drag & drop za redoslijed stavki i postupaka.
+- Zapamti koji su postupci otvoreni (localStorage).
+- Bez N+1 upita.
 
-- Komentari na zadatku i na predmetu.
-- Tekst s automatskim prepoznavanjem URL-ova (klikabilni, otvaraju se u novom tabu, rel="noopener").
-- Osnovno formatiranje: novi red, bold, kod, liste (markdown ili jednostavan editor; sanitizuj HTML protiv XSS).
-- Prilog u komentaru: dugme za fajl i drag & drop direktno u polje komentara.
-- @spominjanje korisnika (autocomplete) → spomenuti dobija obavijest.
-- Autor može urediti (prikaži "uređeno") i obrisati svoj komentar; admin može obrisati bilo koji.
-- Ctrl/Cmd + Enter šalje komentar.
+**Desna kolona**
+- Trenutno stanje i Sljedeći korak – dvije kartice, uređuju se inline.
+- Zahtijeva pažnju (crveni brojač) – automatski: stavke koje kasne, čekaju odgovor duže od 10 dana (konfigurabilno), ili imaju rok u narednih 5 dana. Prikaz: naziv, razlog ("Čeka se odgovor (12 dana)", "U pripremi, rok za 3 dana"), datum. Klik otvara stavku.
+- Posljednje aktivnosti – zadnjih 5 s ikonom po tipu, datumom i korisnikom; "Sve" otvara punu historiju.
+- Dokumenti projekta – zadnja 4 dokumenta: PDF ikona, naziv, datum, smjer, broj protokola ili verzija, ⋯ meni; "Sve" otvara sve dokumente projekta.
+- Članovi projekta – avatari s ulogom, "Uredi" i "+ Dodaj".
 
-## TASK 5 – Prilozi (upload fajlova)
+## TASK 5 – Detalj stavke (bočni panel)
 
-- Upload na zadatak, predmet i komentar.
-- Drag & drop zona + klasično dugme, više fajlova odjednom, progress bar po fajlu.
-- Dozvoljeni tipovi: slike, PDF, Office (doc/docx/xls/xlsx/ppt/pptx), txt, csv, zip, dwg/dxf. Limit veličine konfigurabilan (default 25 MB), jasna poruka greške.
-- Fajlovi se čuvaju u privatnom storage-u. Preuzimanje ide kroz rutu koja provjerava pristup, nikad direktan javni link.
-- Prikaz: ikonica po tipu, naziv, veličina, ko je i kad uploadovao.
-- Pregled: slike kao thumbnail i lightbox, PDF u pregledniku; ostalo download.
-- Brisanje: autor ili admin, uz potvrdu (briše i fajl s diska).
-- Na predmetu: sekcija "Svi prilozi" koja skuplja priloge s predmeta i svih njegovih zadataka.
+Otvara se klikom na stavku, ima i svoju URL adresu za direktan link.
+- Naziv, opis (linkovi klikabilni), breadcrumb Projekat > Postupak.
+- Polja: status, institucija/primalac, rok, datum predaje, datum odgovora, odgovorna osoba. Promjena se snima odmah.
+- Dugmad za tok rada: "Označi kao predato", "Evidentiraj odgovor" (datum + broj protokola + upload dopisa u jednom koraku), "Potrebna dopuna", "Završi".
+- Checklist (podzadaci) s brojem "3/5".
+- Sekcije: Dokumenti, Linkovi, Komentari i aktivnost.
 
-## TASK 6 – Linkovi
+## TASK 6 – Dokumenti i upload
 
-- Sekcija "Linkovi" na zadatku i predmetu: dodaj URL + opcionalni naslov (ako naslov nije unesen, prikaži domenu).
-- Validacija URL-a (samo http/https).
-- Ikonica/favicon po domeni ako je jednostavno izvodljivo; ako nije, generička ikonica.
-- Uređivanje i brisanje.
+- Upload na projekat, postupak, stavku i komentar. Drag & drop, više fajlova odjednom, progress po fajlu.
+- Pri uploadu (opcionalno) se unosi: smjer (izlazni/ulazni/interni), broj protokola, datum dokumenta.
+- Verzije: "Nova verzija" čuva staru; prikaz "Verzija 2" i historija verzija.
+- Tipovi: PDF, slike, Office, txt, csv, zip, dwg/dxf. Limit konfigurabilan (default 25 MB) s jasnom porukom.
+- Privatni storage, preuzimanje samo kroz rutu s provjerom pristupa.
+- Pregled: PDF i slike u pregledniku (lightbox), ostalo download.
+- Stranica "Dokumenti projekta": svi dokumenti iz projekta, filteri po postupku, smjeru i tipu, pretraga po nazivu i broju protokola.
+- Brisanje: autor ili voditelj projekta/admin, uz potvrdu.
 
-## TASK 7 – Historija aktivnosti
+## TASK 7 – Komentari i linkovi
 
-- Loguj: kreiranje, promjene statusa, prioriteta, roka i dodjele, dodavanje i brisanje priloga i linkova, komentare.
-- U detalju zadatka: tab ili prekidač "Komentari | Aktivnost | Sve", hronološki.
-- Format: "Ensar je promijenio status iz U toku u Na pregledu · prije 5 min".
+**Komentari** (na stavci i postupku)
+- URL-ovi automatski klikabilni (novi tab, rel="noopener"), osnovno formatiranje (bold, liste, kod), sanitizacija protiv XSS.
+- Prilog direktno u komentaru (dugme ili drag & drop).
+- @spominjanje članova projekta s autocomplete-om, spomenuti dobija obavijest.
+- Uređivanje (oznaka "uređeno") i brisanje vlastitih; admin briše sve. Ctrl/Cmd+Enter šalje.
 
-## TASK 8 – Ploča (Kanban) po projektu
+**Linkovi** – sekcija na stavci, postupku i projektu: URL (samo http/https) + opcionalni naslov (inače prikaži domenu), uređivanje i brisanje.
 
-- Na stranici projekta prekidač Lista / Ploča.
-- Ploča: kolone po statusu, kartice zadataka (naziv, predmet, avatar, rok, prioritet).
-- Drag & drop između kolona mijenja status, a unutar kolone redoslijed (pozicija). Snima se odmah i loguje u aktivnost.
-- Filter po predmetu i po dodijeljenom korisniku.
+## TASK 8 – Aktivnost i historija
 
-## TASK 9 – Moji zadaci
+- Loguj: kreiranje, promjene statusa, rokova, odgovorne osobe, predaju, odgovor, dokumente, linkove, komentare i promjene projekta (trenutno stanje, sljedeći korak, ručna procjena).
+- U stavci: prekidač "Komentari | Aktivnost | Sve".
+- Puna historija projekta s filterom po tipu i korisniku.
+- Format: "Ensar M. je promijenio status iz U pripremi u Predato · 18.04.2026."
 
-- Svi zadaci dodijeljeni meni, grupisani: Kasni, Danas, Ova sedmica, Kasnije, Bez roka.
-- Brza promjena statusa iz liste (dropdown na chipu), klik otvara drawer.
+## TASK 9 – Moje stavke
+
+- Stavka u sidebaru (ili kartica na vrhu liste projekata): sve stavke gdje sam odgovorna osoba, iz svih projekata.
+- Grupisano: Kasni, Čeka odgovor, Rok ove sedmice, Kasnije, Bez roka.
+- Brza promjena statusa iz liste, klik otvara bočni panel.
 
 ## TASK 10 – Obavijesti
 
-Obavijest se šalje kad:
+Obavijest kad:
+- postanem odgovorna osoba za stavku ili član projekta,
+- me neko @spomene,
+- neko komentariše ili doda dokument na mojoj stavci,
+- se promijeni status moje stavke,
+- je rok sutra ili je istekao, ili stavka čeka odgovor duže od 10 dana (scheduled job, jednom dnevno).
 
-- mi je dodijeljen zadatak,
-- me neko spomene u komentaru,
-- neko komentariše na zadatku koji je moj,
-- se promijeni status mog zadatka,
-- se rok približava (1 dan prije) ili je istekao (scheduled job).
-
-Badge s brojem nepročitanih u sidebaru, lista s linkom direktno na zadatak/komentar, "Označi sve kao pročitano". Ne šalji obavijest korisniku za njegovu vlastitu akciju.
+Zvono s brojem nepročitanih, lista s linkom direktno na stavku ili komentar, "Označi sve kao pročitano". Ne šalji obavijest za vlastitu akciju.
 
 ## TASK 11 – Dorada i kvalitet
 
-- Responsive provjera (mobitel, tablet, desktop), keyboard navigacija, focus stanja.
-- Loading i prazna stanja svuda, poruke grešaka na bosanskom.
-- Konzistentne boje statusa svuda (lista, ploča, drawer, moji zadaci).
-- Indeksi u bazi za česte upite (status, rok, dodijeljen, predmet).
-- Testovi za: autorizaciju priloga (tuđi fajl se ne može preuzeti), upload validaciju, promjenu statusa + aktivnost, filtere na /projekti, obavijesti za @spominjanje.
-- Na kraju: kratak CHANGELOG šta je urađeno i šta bi bio sljedeći korak.
+- Uporedi gotov ekran sa `docs/dizajn-projekat.png` i ispravi razlike u razmacima, veličinama, bojama i poravnanju.
+- Responsive (mobitel, tablet, desktop), keyboard navigacija, focus stanja.
+- Loading, prazna stanja i poruke grešaka na bosanskom svuda.
+- Indeksi u bazi (status, rok, odgovorna osoba, postupak, projekat).
+- Testovi: tuđi dokument se ne može preuzeti, upload validacija, izračun statusa postupka i napretka projekta, logika "Zahtijeva pažnju", obavijest za @spominjanje.
+- Na kraju kratak CHANGELOG i prijedlog sljedećih koraka.
