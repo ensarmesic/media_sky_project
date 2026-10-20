@@ -156,7 +156,7 @@ class RegressionFixesTest extends TestCase
         $service = app(AdministrativeCaseItemService::class);
         $item = $service->create($case, ['name' => 'Zahtjev', 'responsible_user_id' => $admin->id], $admin);
 
-        $service->changeStatus($item, CaseItemStatus::WaitingResponse, $admin);
+        $service->changeStatus($item, CaseItemStatus::Waiting, $admin);
         Notification::fake();
         $this->artisan('items:send-waiting-reminders')->assertSuccessful();
 

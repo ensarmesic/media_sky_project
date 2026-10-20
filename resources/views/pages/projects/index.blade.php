@@ -34,7 +34,7 @@ new #[Title('Projekti')] class extends Component {
             ->with([
                 'responsible',
                 'administrativeCases' => fn ($query) => $query->where('is_archived', false),
-                'administrativeCases.items' => fn ($query) => $query->where('is_active', true)->where('status', '!=', 'not_applicable'),
+                'administrativeCases.items' => fn ($query) => $query->where('is_active', true)->where('status', '!=', \App\Enums\CaseItemStatus::Cancelled->value),
             ])
             ->when($this->search, fn (Builder $query) => $query->where(fn (Builder $scope) => $scope
                 ->where('name', 'like', "%{$this->search}%")

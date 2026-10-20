@@ -93,12 +93,12 @@ class ProjectWorkspaceTest extends TestCase
         $this->actingAs($member);
 
         $component = Livewire::test('pages::projects.show', ['project' => $project])
-            ->call('changeItemStatus', $mine->id, CaseItemStatus::Submitted->value)
+            ->call('changeItemStatus', $mine->id, CaseItemStatus::InReview->value)
             ->assertHasNoErrors();
-        $this->assertSame(CaseItemStatus::Submitted, $mine->fresh()->status);
+        $this->assertSame(CaseItemStatus::InReview, $mine->fresh()->status);
 
         $component->call('changeItemStatus', $other->id, CaseItemStatus::Completed->value)->assertForbidden();
-        $this->assertSame(CaseItemStatus::NotStarted, $other->fresh()->status);
+        $this->assertSame(CaseItemStatus::New, $other->fresh()->status);
     }
 
     public function test_task_panel_saves_changes_and_comments(): void
@@ -109,7 +109,7 @@ class ProjectWorkspaceTest extends TestCase
 
         Livewire::test('pages::projects.show', ['project' => $project])
             ->call('openItem', $item->id)
-            ->set('itemForm.status', CaseItemStatus::WaitingResponse->value)
+            ->set('itemForm.status', CaseItemStatus::Waiting->value)
             ->set('itemForm.due_date', today()->addDays(3)->toDateString())
             ->call('saveItem')
             ->assertHasNoErrors()
@@ -118,7 +118,7 @@ class ProjectWorkspaceTest extends TestCase
             ->assertSee('Pozvati instituciju u ponedjeljak');
 
         $item->refresh();
-        $this->assertSame(CaseItemStatus::WaitingResponse, $item->status);
+        $this->assertSame(CaseItemStatus::Waiting, $item->status);
         $this->assertSame(today()->addDays(3)->toDateString(), $item->due_date->toDateString());
     }
 

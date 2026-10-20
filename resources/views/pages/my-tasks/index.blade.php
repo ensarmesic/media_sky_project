@@ -25,9 +25,9 @@ new #[Title('Moji zadaci')] class extends Component {
             ->where('responsible_user_id', auth()->id())
             ->where('is_active', true)
             ->whereHas('administrativeCase', fn (Builder $query) => $query->where('is_archived', false))
-            ->when($this->filter === 'open', fn (Builder $query) => $query->whereNotIn('status', [CaseItemStatus::Completed->value, CaseItemStatus::NotApplicable->value]))
+            ->when($this->filter === 'open', fn (Builder $query) => $query->whereNotIn('status', CaseItemStatus::closedValues()))
             ->when($this->filter === 'overdue', fn (Builder $query) => $query
-                ->whereNotIn('status', [CaseItemStatus::Completed->value, CaseItemStatus::NotApplicable->value])
+                ->whereNotIn('status', CaseItemStatus::closedValues())
                 ->whereDate('due_date', '<', today()))
             ->when($this->filter === 'done', fn (Builder $query) => $query
                 ->where('status', CaseItemStatus::Completed->value)
@@ -45,7 +45,7 @@ new #[Title('Moji zadaci')] class extends Component {
         return AdministrativeCaseItem::query()
             ->where('responsible_user_id', auth()->id())
             ->where('is_active', true)
-            ->whereNotIn('status', [CaseItemStatus::Completed->value, CaseItemStatus::NotApplicable->value])
+            ->whereNotIn('status', CaseItemStatus::closedValues())
             ->whereDate('due_date', '<', today())
             ->whereHas('administrativeCase', fn (Builder $query) => $query->where('is_archived', false))
             ->count();
@@ -55,7 +55,7 @@ new #[Title('Moji zadaci')] class extends Component {
     {
         $item = AdministrativeCaseItem::with('administrativeCase.project')->findOrFail($itemId);
         Gate::authorize('update', $item);
-        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InPreparation : CaseItemStatus::Completed, auth()->user());
+        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InProgress : CaseItemStatus::Completed, auth()->user());
         unset($this->tasks, $this->overdueCount);
     }
 }; ?>

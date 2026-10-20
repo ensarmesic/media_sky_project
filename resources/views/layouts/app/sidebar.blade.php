@@ -5,7 +5,7 @@
 <flux:sidebar sticky collapsible="true" class="border-e border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
  <flux:sidebar.header><x-app-logo :sidebar="true" href="{{ route('projects.index') }}" wire:navigate/><flux:sidebar.collapse class="lg:hidden"/></flux:sidebar.header>
  @php($unreadNotifications = auth()->user()->unreadNotifications()->count())
- @php($myOpenTasks = auth()->user()->assignedItems()->where('is_active', true)->whereNotIn('status', ['completed', 'not_applicable'])->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))->count())
+ @php($myOpenTasks = auth()->user()->assignedItems()->where('is_active', true)->whereNotIn('status', \App\Enums\CaseItemStatus::closedValues())->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))->count())
  <flux:sidebar.nav>
   <flux:sidebar.group class="grid">
    <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>Projekti</flux:sidebar.item>

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\CaseItemPriority;
 use App\Enums\CaseItemStatus;
 use App\Enums\NotificationKind;
 use App\Models\AdministrativeCase;
@@ -13,56 +14,62 @@ use Illuminate\Support\Facades\DB;
 /** Zadaci predmeta (tehnički: stavke administrativnog predmeta). */
 class AdministrativeCaseItemService
 {
+    /** Polja čije se promjene bilježe u istoriju (staro → novo). */
+    private const TRACKED = ['name', 'description', 'status', 'priority', 'due_date', 'responsible_user_id'];
+
     public function create(AdministrativeCase $case, array $data, User $user): AdministrativeCaseItem
     {
         return DB::transaction(function () use ($case, $data, $user) {
             $item = $case->items()->create([
                 'type' => 'other',
-                'status' => CaseItemStatus::NotStarted,
+                'status' => CaseItemStatus::New,
+                'priority' => CaseItemPriority::Medium,
                 'progress_weight' => 1,
                 ...$this->normalize($data),
                 'created_by' => $user->id,
-                'position' => $data['position'] ?? (($case->items()->max('position') ?? 0) + 1),
+                'position' => $data['position'] ?? (((int) $case->items()->max('position')) + 1),
             ]);
-            $this->activity($item, $user, 'created', 'Zadatak kreiran');
-            app(ProjectActivityService::class)->record($case->project, 'case_item_created', 'Novi zadatak: '.$item->name, $user, $item, 'Predmet: '.$case->name);
-            $this->notifyAssignee($item, $user);
+            $this->log($item, $user, 'task.created', 'Kreiran zadatak: '.$item->name);
+            $this->notifyAssignee($item);
+            $this->syncCaseCompletion($case, $user);
 
             return $item;
         });
     }
 
-    /** Izmjena zadatka iz panela s detaljima. */
+    /** Izmjena bilo kojeg polja zadatka; svaka promjena praćenog polja se loguje. */
     public function update(AdministrativeCaseItem $item, array $data, User $user): AdministrativeCaseItem
     {
         $data = $this->normalize($data);
 
         return DB::transaction(function () use ($item, $data, $user) {
-            if (isset($data['status'])) {
-                $status = $data['status'] instanceof CaseItemStatus ? $data['status'] : CaseItemStatus::from($data['status']);
-                unset($data['status']);
-                if ($status !== $item->status) {
-                    $this->changeStatus($item, $status, $user);
+            $before = collect(self::TRACKED)->mapWithKeys(fn (string $field) => [$field => $this->plain($item->getAttribute($field))])->all();
+            $previousStatus = $item->status;
+
+            $item->fill($data);
+            if ($item->isDirty('status') && $item->status === CaseItemStatus::Waiting && $previousStatus !== CaseItemStatus::Waiting) {
+                // Periodični podsjetnik računa interval od trenutka kada je zadatak počeo čekati.
+                $item->response_reminded_at = now();
+                $item->response_reminder_interval ??= (int) config('projectflow.reminders.waiting_default_interval', 14);
+            }
+            if ($item->isDirty('due_date')) {
+                $item->deadline_reminded_at = null;
+                $item->overdue_reminded_at = null;
+            }
+            $item->save();
+
+            foreach (self::TRACKED as $field) {
+                $after = $this->plain($item->getAttribute($field));
+                if ($before[$field] !== $after) {
+                    $this->logFieldChange($item, $user, $field, $before[$field], $after);
                 }
             }
 
-            $oldDueDate = $item->due_date?->format('d.m.Y.');
-            $oldResponsible = $item->responsible_user_id;
-            $item->update($data);
-
-            if ($item->wasChanged('due_date')) {
-                $item->update(['deadline_reminded_at' => null, 'overdue_reminded_at' => null]);
-                $this->activity($item, $user, 'due_date_changed', 'Rok promijenjen', ($oldDueDate ?? 'bez roka').' → '.($item->due_date?->format('d.m.Y.') ?? 'bez roka'));
+            if ($before['responsible_user_id'] !== $this->plain($item->responsible_user_id)) {
+                $this->notifyAssignee($item->load('responsible'));
             }
-            if ($item->wasChanged('responsible_user_id')) {
-                $item->load('responsible');
-                $this->activity($item, $user, 'responsible_changed', 'Odgovorna osoba: '.($item->responsible?->name ?? 'nije dodijeljeno'));
-                if ($item->responsible_user_id !== null && (int) $oldResponsible !== (int) $item->responsible_user_id) {
-                    $this->notifyAssignee($item, $user);
-                }
-            }
-            if (collect($item->getChanges())->except(['due_date', 'responsible_user_id', 'updated_at', 'deadline_reminded_at', 'overdue_reminded_at'])->isNotEmpty()) {
-                $this->activity($item, $user, 'updated', 'Podaci zadatka ažurirani');
+            if ($before['status'] !== $item->status->value) {
+                $this->notifyStatusChange($item, $previousStatus);
             }
             $this->syncCaseCompletion($item->administrativeCase, $user);
 
@@ -72,38 +79,31 @@ class AdministrativeCaseItemService
 
     public function changeStatus(AdministrativeCaseItem $item, CaseItemStatus $status, User $user): AdministrativeCaseItem
     {
-        $old = $item->status;
-        if ($old === $status) {
-            return $item;
-        }
+        return $item->status === $status ? $item : $this->update($item, ['status' => $status], $user);
+    }
 
-        $updates = ['status' => $status, 'completed_at' => $status === CaseItemStatus::Completed ? ($item->completed_at ?? now()) : null];
-        if ($status === CaseItemStatus::Submitted && $item->submitted_at === null) {
-            $updates['submitted_at'] = now()->toDateString();
-        }
-        if ($status === CaseItemStatus::WaitingResponse && $item->response_reminder_interval === null) {
-            $updates['response_reminder_interval'] = (int) config('projectflow.reminders.waiting_default_interval', 14);
-        }
-        // Periodični podsjetnik računa interval od trenutka kada je zadatak počeo čekati odgovor.
-        $updates['response_reminded_at'] = $status === CaseItemStatus::WaitingResponse ? now() : null;
-        $item->update($updates);
+    /** Kanban: premještanje zadatka u kolonu (status) i na poziciju unutar nje. */
+    public function moveOnBoard(AdministrativeCaseItem $item, CaseItemStatus $status, int $position, User $user): void
+    {
+        DB::transaction(function () use ($item, $status, $position, $user) {
+            if ($item->status !== $status) {
+                $this->update($item, ['status' => $status], $user);
+            }
 
-        $event = $status === CaseItemStatus::Completed ? 'completed' : ($old === CaseItemStatus::Completed ? 'reopened' : 'status_changed');
-        $this->activity($item, $user, $event, 'Status: '.$status->label(), $old->label().' → '.$status->label());
-        app(ProjectActivityService::class)->record($item->administrativeCase->project, 'case_item_status_changed', $item->name.': '.$status->label(), $user, $item, 'Predmet: '.$item->administrativeCase->name);
-
-        if (in_array($status, [CaseItemStatus::WaitingResponse, CaseItemStatus::SupplementRequired], true)) {
-            app(NotificationDispatchService::class)->dispatch(
-                $this->recipients($item, except: $user),
-                $status === CaseItemStatus::SupplementRequired ? NotificationKind::SupplementRequired : NotificationKind::StatusChanged,
-                ($status === CaseItemStatus::SupplementRequired ? 'Potrebna dopuna: ' : 'Zadatak čeka odgovor: ').$item->name,
-                $item->url(),
-                $item->due_date?->format('Y-m-d'),
-            );
-        }
-        $this->syncCaseCompletion($item->administrativeCase, $user);
-
-        return $item->refresh();
+            $projectId = $item->administrativeCase->project_id;
+            $column = AdministrativeCaseItem::query()
+                ->where('is_active', true)
+                ->where('status', $status->value)
+                ->whereKeyNot($item->id)
+                ->whereHas('administrativeCase', fn ($query) => $query->where('project_id', $projectId)->where('is_archived', false))
+                ->orderBy('position')->orderBy('id')
+                ->pluck('id')
+                ->all();
+            array_splice($column, max(0, min($position, count($column))), 0, [$item->id]);
+            foreach ($column as $index => $id) {
+                AdministrativeCaseItem::whereKey($id)->update(['position' => $index + 1]);
+            }
+        });
     }
 
     /** Pomjeranje zadatka gore/dolje unutar predmeta (uz normalizaciju dupliranih pozicija). */
@@ -124,24 +124,46 @@ class AdministrativeCaseItemService
         });
     }
 
+    /** Kopija zadatka (sa checklistom) u istom predmetu. */
+    public function duplicate(AdministrativeCaseItem $item, User $user): AdministrativeCaseItem
+    {
+        return DB::transaction(function () use ($item, $user) {
+            $copy = $this->create($item->administrativeCase, [
+                ...$item->only(['name', 'description', 'priority', 'due_date', 'responsible_user_id', 'institution_id', 'notes', 'type', 'progress_weight', 'is_required_for_closure']),
+                'name' => $item->name.' (kopija)',
+            ], $user);
+            if (method_exists($item, 'checklistItems')) {
+                foreach ($item->checklistItems as $checklistItem) {
+                    $copy->checklistItems()->create($checklistItem->only(['title', 'position']));
+                }
+            }
+
+            return $copy;
+        });
+    }
+
+    /** "Brisanje" zadatka: zadatak se deaktivira, a istorija i prilozi ostaju sačuvani. */
     public function deactivate(AdministrativeCaseItem $item, User $user): void
     {
         $item->update(['is_active' => false]);
-        $this->activity($item, $user, 'deactivated', 'Zadatak uklonjen');
-        app(ProjectActivityService::class)->record($item->administrativeCase->project, 'case_item_removed', 'Uklonjen zadatak: '.$item->name, $user, $item, 'Predmet: '.$item->administrativeCase->name);
+        $this->log($item, $user, 'task.deleted', 'Obrisan zadatak: '.$item->name);
         $this->syncCaseCompletion($item->administrativeCase, $user);
     }
 
-    /** Bilješka u istoriju zadatka bez mijenjanja podataka. */
-    public function addNote(AdministrativeCaseItem $item, User $user, string $note): void
+    /** Upis u centralni log aktivnosti projekta (subjekt je zadatak). */
+    public function log(AdministrativeCaseItem $item, User $user, string $event, string $title, array $metadata = []): void
     {
-        $this->activity($item, $user, 'note', 'Napomena', $note);
-        app(ProjectActivityService::class)->record($item->administrativeCase->project, 'case_item_note', 'Napomena na zadatak: '.$item->name, $user, $item, $note);
+        app(ProjectActivityService::class)->record($item->administrativeCase->project, $event, $title, $user, $item, null, $metadata);
     }
 
-    private function notifyAssignee(AdministrativeCaseItem $item, User $actor): void
+    private function logFieldChange(AdministrativeCaseItem $item, User $user, string $field, mixed $old, mixed $new): void
     {
-        if ($item->responsible_user_id === null || (int) $item->responsible_user_id === $actor->id) {
+        $this->log($item, $user, 'task.'.$field, 'Izmijenjen zadatak: '.$item->name, ['field' => $field, 'old' => $old, 'new' => $new]);
+    }
+
+    private function notifyAssignee(AdministrativeCaseItem $item): void
+    {
+        if ($item->responsible_user_id === null) {
             return;
         }
 
@@ -154,6 +176,28 @@ class AdministrativeCaseItemService
         );
     }
 
+    private function notifyStatusChange(AdministrativeCaseItem $item, CaseItemStatus $previous): void
+    {
+        app(NotificationDispatchService::class)->dispatch(
+            [$item->responsible],
+            NotificationKind::StatusChanged,
+            $item->name.': '.$previous->label().' → '.$item->status->label(),
+            $item->url(),
+            $item->due_date?->format('Y-m-d'),
+        );
+    }
+
+    /** Vrijednost za log: enum → value, datum → Y-m-d, broj → string. */
+    private function plain(mixed $value): ?string
+    {
+        return match (true) {
+            $value === null, $value === '' => null,
+            $value instanceof \BackedEnum => (string) $value->value,
+            $value instanceof \DateTimeInterface => $value->format('Y-m-d'),
+            default => (string) $value,
+        };
+    }
+
     private function normalize(array $data): array
     {
         foreach (['description', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'outcome', 'notes', 'response_reminder_interval'] as $field) {
@@ -163,26 +207,6 @@ class AdministrativeCaseItemService
         }
 
         return $data;
-    }
-
-    /**
-     * Odgovorna osoba zadatka i odgovorna osoba predmeta, bez duplikata i bez osobe koja je napravila izmjenu.
-     *
-     * @return array<int, User>
-     */
-    private function recipients(AdministrativeCaseItem $item, ?User $except = null): array
-    {
-        return collect([$item->responsible, $item->administrativeCase->responsible])
-            ->filter()
-            ->unique('id')
-            ->reject(fn (User $user) => $except !== null && $user->is($except))
-            ->values()
-            ->all();
-    }
-
-    private function activity(AdministrativeCaseItem $item, User $user, string $event, string $title, ?string $description = null): void
-    {
-        $item->activities()->create(['user_id' => $user->id, 'event_type' => $event, 'title' => $title, 'description' => $description]);
     }
 
     /** Predmet se automatski zatvara kada su svi zadaci završeni, i ponovo otvara ako se neki vrati. */

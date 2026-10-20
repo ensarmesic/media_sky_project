@@ -23,8 +23,8 @@ class AdministrativeCaseItemTest extends TestCase
         [$case, $user] = $this->caseAndUser();
         $service = app(AdministrativeCaseItemService::class);
         $service->create($case, ['name' => 'Idejni projekat', 'progress_weight' => 3, 'status' => CaseItemStatus::Completed], $user);
-        $service->create($case, ['name' => 'Saglasnost EPBiH', 'progress_weight' => 1, 'status' => CaseItemStatus::NotStarted], $user);
-        $service->create($case, ['name' => 'TXTV', 'progress_weight' => 10, 'status' => CaseItemStatus::NotApplicable], $user);
+        $service->create($case, ['name' => 'Saglasnost EPBiH', 'progress_weight' => 1, 'status' => CaseItemStatus::New], $user);
+        $service->create($case, ['name' => 'TXTV', 'progress_weight' => 10, 'status' => CaseItemStatus::Cancelled], $user);
 
         $this->assertSame(75, $case->fresh()->progressPercentage());
     }
@@ -36,9 +36,11 @@ class AdministrativeCaseItemTest extends TestCase
         $item = $service->create($case, ['name' => 'Predaja zahtjeva'], $user);
         $service->changeStatus($item, CaseItemStatus::Completed, $user);
         $this->assertNotNull($item->fresh()->completed_at);
-        $service->changeStatus($item->fresh(), CaseItemStatus::SupplementRequired, $user);
+        $service->changeStatus($item->fresh(), CaseItemStatus::InProgress, $user);
         $this->assertNull($item->fresh()->completed_at);
-        $this->assertDatabaseHas('administrative_case_item_activities', ['administrative_case_item_id' => $item->id, 'event_type' => 'reopened']);
+        $statusChanges = $item->activityLog()->where('event_type', 'task.status')->get();
+        $this->assertSame([['completed', 'in_progress']], $statusChanges->skip(1)->map(fn ($activity) => [$activity->metadata['old'], $activity->metadata['new']])->values()->all());
+        $this->assertSame('new', $statusChanges->first()->metadata['old']);
     }
 
     public function test_required_final_step_prevents_case_closure(): void

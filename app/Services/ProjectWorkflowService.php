@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\CaseItemStatus;
 use App\Enums\NotificationKind;
 use App\Enums\ProjectStatus;
 use App\Models\AdministrativeCaseItem;
@@ -64,7 +65,7 @@ class ProjectWorkflowService
         return AdministrativeCaseItem::query()
             ->where('is_active', true)
             ->where('is_required_for_closure', true)
-            ->whereIn('status', ['not_started', 'in_preparation', 'ready_to_submit', 'submitted', 'waiting_response', 'supplement_required'])
+            ->whereNotIn('status', CaseItemStatus::closedValues())
             ->whereIn('administrative_case_id', $project->administrativeCases()->select('id'))
             ->with('administrativeCase')
             ->get();

@@ -134,7 +134,7 @@ new #[Title('Projekat')] class extends Component {
         $items = $this->project->administrativeCases
             ->where('is_archived', false)
             ->flatMap->items
-            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::NotApplicable);
+            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::Cancelled);
 
         return [
             'total' => $items->count(),
@@ -306,7 +306,7 @@ new #[Title('Projekat')] class extends Component {
     {
         $item = $this->findItem($itemId);
         Gate::authorize('update', $item);
-        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InPreparation : CaseItemStatus::Completed, auth()->user());
+        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InProgress : CaseItemStatus::Completed, auth()->user());
         $this->refreshProject();
     }
 
@@ -377,12 +377,12 @@ new #[Title('Projekat')] class extends Component {
         Flux::toast('Zadatak je sačuvan.', variant: 'success');
     }
 
-    public function addItemNote(AdministrativeCaseItemService $service): void
+    public function addItemNote(\App\Services\CommentService $comments): void
     {
         $item = $this->findItem($this->selectedItemId);
         Gate::authorize('update', $item);
         $this->validate(['itemNote' => ['required', 'string', 'max:2000']], attributes: ['itemNote' => 'komentar']);
-        $service->addNote($item, auth()->user(), trim($this->itemNote));
+        $comments->create($item, auth()->user(), $this->itemNote);
         $this->itemNote = '';
         $this->refreshProject();
     }
@@ -508,7 +508,7 @@ new #[Title('Projekat')] class extends Component {
             'templates' => $this->showCaseModal ? CaseTemplate::where('is_active', true)->withCount('items')->orderBy('name')->get() : collect(),
             'selectedItem' => $this->selectedItemId
                 ? $this->project->administrativeCases->flatMap->items->firstWhere('id', $this->selectedItemId)
-                    ?->loadMissing(['administrativeCase', 'activities' => fn ($query) => $query->latest()->latest('id'), 'activities.user'])
+                    ?->loadMissing(['administrativeCase', 'activities' => fn ($query) => $query->latest()->latest('id'), 'activities.user', 'comments' => fn ($query) => $query->latest()->latest('id'), 'comments.user'])
                 : null,
         ];
     }
@@ -660,7 +660,7 @@ new #[Title('Projekat')] class extends Component {
         <div class="flex flex-col gap-3">
             @forelse($this->cases as $case)
                 @php($items = $this->visibleItems($case))
-                @php($caseItems = $case->items->reject(fn ($item) => $item->status === CaseItemStatus::NotApplicable))
+                @php($caseItems = $case->items->reject(fn ($item) => $item->status === CaseItemStatus::Cancelled))
                 @php($isCollapsed = $collapsed[$case->id] ?? false)
                 @php($canEditCase = auth()->user()->can('update', $case))
                 <section id="predmet-{{ $case->id }}" wire:key="case-{{ $case->id }}" class="scroll-mt-4 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -971,6 +971,12 @@ new #[Title('Projekat')] class extends Component {
                     </form>
                 @endif
                 <div class="mt-4 space-y-3">
+                    @foreach($selectedItem->comments as $comment)
+                        <div class="text-sm" wire:key="item-comment-{{ $comment->id }}">
+                            <div><span class="font-medium">{{ $comment->user->name }}</span> <span class="text-xs text-zinc-400">· {{ $comment->created_at->format('d.m.Y. H:i') }}</span></div>
+                            <div class="whitespace-pre-line text-zinc-600 dark:text-zinc-300">{{ $comment->body }}</div>
+                        </div>
+                    @endforeach
                     @forelse($selectedItem->activities as $activity)
                         <div class="text-sm" wire:key="item-activity-{{ $activity->id }}">
                             <div><span class="font-medium">{{ $activity->title }}</span> <span class="text-xs text-zinc-400">· {{ $activity->user?->name ?? 'Sistem' }}, {{ $activity->created_at->format('d.m.Y. H:i') }}</span></div>

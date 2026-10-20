@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CaseItemStatus;
 use App\Enums\NotificationKind;
 use App\Models\AdministrativeCase;
 use App\Models\AdministrativeCaseItem;
@@ -21,7 +22,7 @@ $openItems = fn (): Builder => AdministrativeCaseItem::query()
     ->with(['responsible', 'administrativeCase'])
     ->where('is_active', true)
     ->whereNotNull('responsible_user_id')
-    ->whereNotIn('status', ['completed', 'not_applicable'])
+    ->whereNotIn('status', CaseItemStatus::closedValues())
     ->whereHas('administrativeCase', fn (Builder $query) => $query->where('is_archived', false));
 
 Artisan::command('items:send-deadline-reminders', function (NotificationDispatchService $dispatcher) use ($openItems) {
@@ -79,7 +80,7 @@ Artisan::command('items:send-waiting-reminders', function (NotificationDispatchS
     AdministrativeCaseItem::query()
         ->with(['administrativeCase.responsible', 'responsible'])
         ->where('is_active', true)
-        ->where('status', 'waiting_response')
+        ->where('status', CaseItemStatus::Waiting->value)
         ->whereNotNull('response_reminder_interval')
         ->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))
         ->lazyById()
@@ -118,7 +119,7 @@ Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uklj
                 ->map(fn (AdministrativeCase $case) => $case->name.' ('.$case->project->name.', rok '.$case->response_due_at->format('d.m.Y.').')')->all();
 
             $waitingItems = $openItems()->with('administrativeCase.project')
-                ->where('status', 'waiting_response')
+                ->where('status', CaseItemStatus::Waiting->value)
                 ->whereIn('administrative_case_id', AdministrativeCase::query()->whereIn('project_id', $projectIds)->select('id'))
                 ->where(fn ($query) => $query->whereNull('submitted_at')->orWhereDate('submitted_at', '<', today()->subDays($waitingLimit)))
                 ->limit(10)->get()->map($describe)->all();

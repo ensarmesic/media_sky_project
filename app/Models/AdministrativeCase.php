@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable(['project_id', 'name', 'description', 'case_type_id', 'institution_id', 'responsible_user_id', 'started_at', 'submitted_at', 'response_due_at', 'reminder_days_before', 'deadline_reminded_at', 'overdue_reminded_at', 'case_status_id', 'outcome', 'notes', 'closed_at', 'progress_weight', 'position', 'is_archived', 'archived_at', 'created_by'])]
 class AdministrativeCase extends Model
@@ -65,7 +66,7 @@ class AdministrativeCase extends Model
     {
         $relevantItems = ($this->relationLoaded('items') ? $this->items : $this->items()->get())
             ->where('is_active', true)
-            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::NotApplicable);
+            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::Cancelled);
 
         if ($relevantItems->isEmpty()) {
             return 0;
@@ -88,5 +89,20 @@ class AdministrativeCase extends Model
     public function documentReferences(): HasMany
     {
         return $this->hasMany(DocumentReference::class);
+    }
+
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    public function links(): MorphMany
+    {
+        return $this->morphMany(Link::class, 'linkable');
     }
 }

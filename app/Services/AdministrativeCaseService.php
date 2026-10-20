@@ -123,7 +123,7 @@ class AdministrativeCaseService
             foreach ($case->items()->where('is_active', true)->orderBy('position')->get() as $item) {
                 $itemCopy = $item->replicate();
                 $itemCopy->administrative_case_id = $copy->id;
-                $itemCopy->status = CaseItemStatus::NotStarted;
+                $itemCopy->status = CaseItemStatus::New;
                 $itemCopy->submitted_at = null;
                 $itemCopy->response_at = null;
                 $itemCopy->completed_at = null;
@@ -150,7 +150,7 @@ class AdministrativeCaseService
             foreach ($source->items()->where('is_active', true)->orderBy('position')->get() as $item) {
                 $itemCopy = $item->replicate();
                 $itemCopy->administrative_case_id = $case->id;
-                $itemCopy->status = CaseItemStatus::NotStarted;
+                $itemCopy->status = CaseItemStatus::New;
                 $itemCopy->submitted_at = null;
                 $itemCopy->response_at = null;
                 $itemCopy->completed_at = null;
