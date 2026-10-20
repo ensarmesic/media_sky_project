@@ -4,6 +4,11 @@
             <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('Profile') }}</flux:navlist.item>
             <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('categories.index')" wire:navigate>Kategorije projekata</flux:navlist.item>
+            @if(auth()->user()->isAdministrator())
+                <flux:navlist.item :href="route('case-catalogs.index')" wire:navigate>Šifrarnici predmeta</flux:navlist.item>
+                <flux:navlist.item :href="route('users.index')" wire:navigate>Korisnici</flux:navlist.item>
+            @endif
         </flux:navlist>
     </div>
 

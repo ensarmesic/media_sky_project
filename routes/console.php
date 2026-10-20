@@ -1,8 +1,138 @@
 <?php
 
+use App\Enums\NotificationKind;
+use App\Models\AdministrativeCase;
+use App\Models\AdministrativeCaseItem;
+use App\Models\Project;
+use App\Models\User;
+use App\Notifications\DailyDigestNotification;
+use App\Services\NotificationDispatchService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+/** Otvoreni zadaci (stavke) aktivnih predmeta koji imaju odgovornu osobu. */
+$openItems = fn (): Builder => AdministrativeCaseItem::query()
+    ->with(['responsible', 'administrativeCase'])
+    ->where('is_active', true)
+    ->whereNotNull('responsible_user_id')
+    ->whereNotIn('status', ['completed', 'not_applicable'])
+    ->whereHas('administrativeCase', fn (Builder $query) => $query->where('is_archived', false));
+
+Artisan::command('items:send-deadline-reminders', function (NotificationDispatchService $dispatcher) use ($openItems) {
+    $dueSoonDays = (int) config('projectflow.reminders.due_soon_days', 7);
+
+    $openItems()
+        ->whereNull('deadline_reminded_at')
+        ->whereDate('due_date', '>=', today())
+        ->whereDate('due_date', '<=', today()->addDays($dueSoonDays))
+        ->lazyById()
+        ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
+            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineSoon, 'Približava se rok zadatka: '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
+            $item->update(['deadline_reminded_at' => now()]);
+        });
+
+    $openItems()
+        ->whereNull('overdue_reminded_at')
+        ->whereDate('due_date', '<', today())
+        ->lazyById()
+        ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
+            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineOverdue, 'Zadatak je prekoračio rok: '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
+            $item->update(['overdue_reminded_at' => now()]);
+        });
+})->purpose('Pošalji podsjetnike i upozorenja za rokove zadataka');
+
+Artisan::command('cases:send-deadline-reminders', function (NotificationDispatchService $dispatcher) {
+    AdministrativeCase::query()
+        ->with('responsible')
+        ->where('is_archived', false)
+        ->whereNull('closed_at')
+        ->whereNull('deadline_reminded_at')
+        ->whereNotNull('reminder_days_before')
+        ->whereDate('response_due_at', '>=', today())
+        ->lazyById()
+        ->filter(fn (AdministrativeCase $case) => $case->response_due_at->lte(today()->addDays($case->reminder_days_before)))
+        ->each(function (AdministrativeCase $case) use ($dispatcher) {
+            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineSoon, 'Približava se rok predmeta: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
+            $case->update(['deadline_reminded_at' => now()]);
+        });
+
+    AdministrativeCase::query()
+        ->with('responsible')
+        ->where('is_archived', false)
+        ->whereNull('closed_at')
+        ->whereNull('overdue_reminded_at')
+        ->whereDate('response_due_at', '<', today())
+        ->lazyById()
+        ->each(function (AdministrativeCase $case) use ($dispatcher) {
+            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineOverdue, 'Predmet je prekoračio rok: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
+            $case->update(['overdue_reminded_at' => now()]);
+        });
+})->purpose('Pošalji podsjetnike i upozorenja za rokove predmeta');
+
+Artisan::command('items:send-waiting-reminders', function (NotificationDispatchService $dispatcher) {
+    AdministrativeCaseItem::query()
+        ->with(['administrativeCase.responsible', 'responsible'])
+        ->where('is_active', true)
+        ->where('status', 'waiting_response')
+        ->whereNotNull('response_reminder_interval')
+        ->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))
+        ->lazyById()
+        // Interval se računa od posljednjeg podsjetnika, odnosno od početka čekanja.
+        ->filter(fn (AdministrativeCaseItem $item) => ($item->response_reminded_at ?? $item->submitted_at ?? $item->updated_at)
+            ->lte(now()->subDays(max(1, $item->response_reminder_interval))))
+        ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
+            $recipients = collect([$item->responsible, $item->administrativeCase->responsible])->filter()->unique('id')->all();
+            $dispatcher->dispatch($recipients, NotificationKind::WaitingTooLong, 'Zadatak predugo čeka odgovor: '.$item->name, $item->url(), $item->due_date?->format('Y-m-d'));
+            $item->update(['response_reminded_at' => now()]);
+        });
+})->purpose('Pošalji periodične podsjetnike za zadatke koji čekaju odgovor');
+
+Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uključenim sažetkom, bez obzira na odabrani sat}', function () use ($openItems) {
+    $waitingLimit = (int) config('projectflow.reminders.waiting_too_long_days', 14);
+    $dueSoonDays = (int) config('projectflow.reminders.due_soon_days', 7);
+    $describe = fn (AdministrativeCaseItem $item) => $item->name.' ('.$item->administrativeCase->project->name.' / '.$item->administrativeCase->name.($item->due_date ? ', rok '.$item->due_date->format('d.m.Y.') : '').')';
+
+    User::query()
+        ->whereNotNull('email')
+        ->whereHas('notificationSetting', fn ($query) => $query
+            ->where('daily_digest', true)
+            ->where('email_enabled', true)
+            ->when(! $this->option('all'), fn ($query) => $query->where('digest_hour', now()->hour)))
+        ->lazyById()
+        ->each(function (User $user) use ($openItems, $waitingLimit, $dueSoonDays, $describe) {
+            $projectIds = Project::visibleTo($user)->select('id');
+            $myItems = fn () => $openItems()->with('administrativeCase.project')->where('responsible_user_id', $user->id)->orderBy('due_date')->limit(10);
+
+            $overdueItems = $myItems()->whereDate('due_date', '<', today())->get()->map($describe)->all();
+            $dueSoonItems = $myItems()->whereBetween('due_date', [today(), today()->addDays($dueSoonDays)])->get()->map($describe)->all();
+
+            $overdueCases = AdministrativeCase::with('project')->whereIn('project_id', $projectIds)
+                ->where('is_archived', false)->whereNull('closed_at')->whereDate('response_due_at', '<', today())
+                ->orderBy('response_due_at')->limit(10)->get()
+                ->map(fn (AdministrativeCase $case) => $case->name.' ('.$case->project->name.', rok '.$case->response_due_at->format('d.m.Y.').')')->all();
+
+            $waitingItems = $openItems()->with('administrativeCase.project')
+                ->where('status', 'waiting_response')
+                ->whereIn('administrative_case_id', AdministrativeCase::query()->whereIn('project_id', $projectIds)->select('id'))
+                ->where(fn ($query) => $query->whereNull('submitted_at')->orWhereDate('submitted_at', '<', today()->subDays($waitingLimit)))
+                ->limit(10)->get()->map($describe)->all();
+
+            if ($overdueItems === [] && $dueSoonItems === [] && $overdueCases === [] && $waitingItems === []) {
+                return;
+            }
+
+            $user->notify(new DailyDigestNotification(today()->format('d.m.Y.'), $overdueCases, $overdueItems, $dueSoonItems, $waitingItems));
+        });
+})->purpose('Pošalji dnevni sažetak otvorenih obaveza');
+
+Schedule::command('items:send-deadline-reminders')->dailyAt('07:00')->withoutOverlapping();
+Schedule::command('cases:send-deadline-reminders')->dailyAt('07:05')->withoutOverlapping();
+Schedule::command('items:send-waiting-reminders')->dailyAt('07:10')->withoutOverlapping();
+// Svaki korisnik bira sat dnevnog sažetka (digest_hour), pa se komanda pokreće svaki sat.
+Schedule::command('notifications:send-daily-digest')->hourly()->withoutOverlapping();

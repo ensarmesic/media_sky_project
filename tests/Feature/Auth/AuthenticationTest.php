@@ -23,13 +23,13 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post(route('login.store'), [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'password',
         ]);
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('projects.index', absolute: false));
 
         $this->assertAuthenticated();
     }
@@ -39,11 +39,11 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->post(route('login.store'), [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'wrong-password',
         ]);
 
-        $response->assertSessionHasErrorsIn('email');
+        $response->assertSessionHasErrorsIn('username');
 
         $this->assertGuest();
     }
@@ -60,7 +60,7 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->withTwoFactor()->create();
 
         $response = $this->post(route('login.store'), [
-            'email' => $user->email,
+            'username' => $user->username,
             'password' => 'password',
         ]);
 

@@ -1,4 +1,16 @@
-# Laravel + Livewire Starter Kit
+# ProjectFlow
+
+Interna Laravel + Livewire aplikacija za upravljanje projektima, administrativnim predmetima, zadacima, rokovima, dokumentnim referencama i izvještajima.
+
+## Dokumentacija
+
+- [Instalacija i ažuriranje](docs/INSTALLATION.md)
+- [Produkcijski rad, queue, scheduler i backup](docs/PRODUCTION.md)
+- [Priprema integracije s protokolom](docs/PROTOCOL_INTEGRATION.md)
+
+## Tehnologije
+
+Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4, PostgreSQL i Vite. Aplikacija nema odvojeni SPA frontend.
 
 ## Introduction
 

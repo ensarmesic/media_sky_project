@@ -17,7 +17,7 @@ trait ProfileValidationRules
     {
         return [
             'name' => $this->nameRules(),
-            'email' => $this->emailRules($userId),
+            'username' => ['required', 'string', 'alpha_dash', 'max:50', Rule::unique(User::class)->ignore($userId)],
         ];
     }
 

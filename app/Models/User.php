@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -28,9 +31,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'username', 'email', 'password', 'role'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -45,7 +48,39 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
+    }
+
+    public function managedProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'responsible_user_id');
+    }
+
+    /** Zadaci (stavke predmeta) za koje je korisnik odgovoran. */
+    public function assignedItems(): HasMany
+    {
+        return $this->hasMany(AdministrativeCaseItem::class, 'responsible_user_id');
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class)->withPivot('role')->withTimestamps();
+    }
+
+    public function isAdministrator(): bool
+    {
+        return $this->role === UserRole::Administrator;
+    }
+
+    public function notificationSetting(): HasOne
+    {
+        return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    public function notificationSettingFor(): UserNotificationSetting
+    {
+        return $this->notificationSetting()->firstOrCreate(['user_id' => $this->id]);
     }
 
     /**

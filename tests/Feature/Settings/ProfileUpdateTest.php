@@ -26,7 +26,7 @@ class ProfileUpdateTest extends TestCase
 
         $response = Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
-            ->set('email', 'test@example.com')
+            ->set('username', 'test_user')
             ->call('updateProfileInformation');
 
         $response->assertHasNoErrors();
@@ -34,24 +34,21 @@ class ProfileUpdateTest extends TestCase
         $user->refresh();
 
         $this->assertEquals('Test User', $user->name);
-        $this->assertEquals('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        $this->assertEquals('test_user', $user->username);
     }
 
-    public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void
+    public function test_username_must_be_unique(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user);
 
-        $response = Livewire::test('pages::settings.profile')
+        $other = User::factory()->create(['username' => 'duplicate_user']);
+        Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
-            ->set('email', $user->email)
-            ->call('updateProfileInformation');
-
-        $response->assertHasNoErrors();
-
-        $this->assertNotNull($user->refresh()->email_verified_at);
+            ->set('username', $other->username)
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['username' => 'unique']);
     }
 
     public function test_user_can_delete_their_account(): void
