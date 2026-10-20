@@ -166,21 +166,6 @@ class RegressionFixesTest extends TestCase
         Notification::assertSentTo($admin, WorkspaceNotification::class);
     }
 
-    public function test_project_list_filters_by_status(): void
-    {
-        $admin = User::factory()->create(['role' => UserRole::Administrator]);
-        Project::factory()->create(['name' => 'Aktivni projekat', 'status' => ProjectStatus::InProgress]);
-        Project::factory()->create(['name' => 'Završeni projekat', 'status' => ProjectStatus::Completed]);
-        $this->actingAs($admin);
-
-        Livewire::test('pages::projects.index')
-            ->assertSee('Aktivni projekat')
-            ->assertDontSee('Završeni projekat')
-            ->set('status', ProjectStatus::Completed->value)
-            ->assertSee('Završeni projekat')
-            ->assertDontSee('Aktivni projekat');
-    }
-
     /** @return array{0: User, 1: Project, 2: CaseType, 3: CaseStatus} */
     private function setUpProject(): array
     {

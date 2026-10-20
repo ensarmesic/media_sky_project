@@ -20,8 +20,16 @@ class WorkspaceAccessScopeTest extends TestCase
     {
         $member = User::factory()->create(['role' => UserRole::TeamMember]);
         $visibleProject = Project::factory()->create(['name' => 'Vidljivi projekat']);
-        Project::factory()->create(['name' => 'Skriveni projekat']);
+        $hiddenProject = Project::factory()->create(['name' => 'Skriveni projekat']);
         $visibleProject->members()->attach($member, ['role' => 'member']);
+        $type = CaseType::create(['name' => 'Zahtjev']);
+        $status = CaseStatus::create(['name' => 'U pripremi', 'system_key' => 'in_preparation']);
+        foreach ([$visibleProject, $hiddenProject] as $project) {
+            AdministrativeCase::create([
+                'project_id' => $project->id, 'name' => 'Predmet '.$project->name, 'case_type_id' => $type->id, 'case_status_id' => $status->id,
+                'responsible_user_id' => $project->responsible_user_id, 'started_at' => now(), 'created_by' => $project->created_by,
+            ])->items()->create(['name' => 'Zadatak '.$project->name, 'created_by' => $project->created_by]);
+        }
 
         $this->actingAs($member)
             ->get(route('projects.index'))
