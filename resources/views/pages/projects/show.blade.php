@@ -305,7 +305,7 @@ new #[Title('Projekat')] class extends Component {
     {
         $item = $this->findItem($itemId);
         Gate::authorize('update', $item);
-        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InProgress : CaseItemStatus::Completed, auth()->user());
+        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InPreparation : CaseItemStatus::Completed, auth()->user());
         $this->refreshProject();
     }
 

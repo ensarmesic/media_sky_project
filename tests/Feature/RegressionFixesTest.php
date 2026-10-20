@@ -92,6 +92,7 @@ class RegressionFixesTest extends TestCase
     {
         $viewer = User::factory()->create(['role' => UserRole::Viewer]);
         $project = Project::factory()->create();
+        $project->members()->attach($viewer, ['role' => 'member']);
         $this->actingAs($viewer);
 
         Livewire::test('pages::projects.show', ['project' => $project])
@@ -130,7 +131,7 @@ class RegressionFixesTest extends TestCase
         $service = app(AdministrativeCaseItemService::class);
         $item = $service->create($case, ['name' => 'Zahtjev', 'responsible_user_id' => $admin->id], $admin);
 
-        $service->changeStatus($item, CaseItemStatus::Waiting, $admin);
+        $service->changeStatus($item, CaseItemStatus::WaitingResponse, $admin);
         Notification::fake();
         $this->artisan('items:send-waiting-reminders')->assertSuccessful();
 

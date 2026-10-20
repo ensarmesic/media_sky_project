@@ -8,6 +8,7 @@ use App\Models\CaseStatus;
 use App\Models\CaseType;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\AdministrativeCaseItemService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -46,17 +47,32 @@ class WorkspaceAccessScopeTest extends TestCase
         $this->actingAs($member)->get(route('projects.show', $hiddenProject))->assertForbidden();
     }
 
-    public function test_user_assigned_to_a_case_can_open_its_project(): void
+    public function test_user_assigned_to_an_item_becomes_project_member(): void
     {
         $member = User::factory()->create(['role' => UserRole::TeamMember]);
+        $manager = User::factory()->create(['role' => UserRole::Administrator]);
         $project = Project::factory()->create();
-        AdministrativeCase::create([
-            'project_id' => $project->id, 'name' => 'Dodijeljeni predmet', 'case_type_id' => CaseType::create(['name' => 'Zahtjev'])->id,
+        $case = AdministrativeCase::create([
+            'project_id' => $project->id, 'name' => 'Dodijeljeni postupak', 'case_type_id' => CaseType::create(['name' => 'Zahtjev'])->id,
             'case_status_id' => CaseStatus::create(['name' => 'U pripremi', 'system_key' => 'in_preparation'])->id,
-            'responsible_user_id' => $member->id, 'started_at' => now(), 'created_by' => $member->id,
+            'responsible_user_id' => $manager->id, 'started_at' => now(), 'created_by' => $manager->id,
         ]);
+        $this->actingAs($member)->get(route('projects.show', $project))->assertForbidden();
 
-        $this->actingAs($member)->get(route('projects.show', $project))->assertOk()->assertSee('Dodijeljeni predmet');
+        app(AdministrativeCaseItemService::class)->create($case, ['name' => 'Stavka', 'responsible_user_id' => $member->id], $manager);
+
+        $this->assertSame('member', $project->members()->whereKey($member->id)->first()->pivot->role);
+        $this->actingAs($member)->get(route('projects.show', $project))->assertOk()->assertSee('Dodijeljeni postupak');
+    }
+
+    public function test_viewer_role_sees_only_projects_where_it_is_a_member(): void
+    {
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $project = Project::factory()->create();
+
+        $this->actingAs($viewer)->get(route('projects.show', $project))->assertForbidden();
+        $project->members()->attach($viewer, ['role' => 'member']);
+        $this->actingAs($viewer)->get(route('projects.show', $project))->assertOk();
     }
 
     public function test_project_manager_cannot_create_case_in_project_they_do_not_manage(): void

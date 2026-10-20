@@ -37,7 +37,7 @@ class ProjectsOverviewTest extends TestCase
 
     public function test_tasks_are_grouped_by_project_and_case_and_closed_tasks_are_hidden(): void
     {
-        $this->task('Saglasnost Vodovoda', CaseItemStatus::InProgress);
+        $this->task('Saglasnost Vodovoda', CaseItemStatus::InPreparation);
         $this->task('Idejni projekat', CaseItemStatus::Completed);
         $this->task('Otkazana stavka', CaseItemStatus::Cancelled);
 
@@ -64,15 +64,15 @@ class ProjectsOverviewTest extends TestCase
     public function test_phase_overdue_mine_project_and_search_filters(): void
     {
         $other = User::factory()->create();
-        $this->task('U toku zadatak', CaseItemStatus::InProgress, ['responsible_user_id' => $this->manager->id]);
-        $this->task('Na čekanju zadatak', CaseItemStatus::Waiting, ['responsible_user_id' => $other->id]);
-        $this->task('Zakašnjeli zadatak', CaseItemStatus::New, ['due_date' => today()->subDay()]);
+        $this->task('U toku zadatak', CaseItemStatus::InPreparation, ['responsible_user_id' => $this->manager->id]);
+        $this->task('Na čekanju zadatak', CaseItemStatus::WaitingResponse, ['responsible_user_id' => $other->id]);
+        $this->task('Zakašnjeli zadatak', CaseItemStatus::NotStarted, ['due_date' => today()->subDay()]);
         $otherProject = Project::factory()->create(['name' => 'Vodovod Centar', 'responsible_user_id' => $this->manager->id, 'created_by' => $this->manager->id]);
-        $this->task('Zadatak drugog projekta', CaseItemStatus::New, [], $this->makeCase($otherProject, 'Okolinska dozvola'));
+        $this->task('Zadatak drugog projekta', CaseItemStatus::NotStarted, [], $this->makeCase($otherProject, 'Okolinska dozvola'));
         $this->actingAs($this->manager);
 
         Livewire::test('pages::projects.index')
-            ->set('phase', CaseItemStatus::Waiting->value)
+            ->set('phase', CaseItemStatus::WaitingResponse->value)
             ->assertSee('Na čekanju zadatak')->assertDontSee('U toku zadatak')
             ->set('phase', 'overdue')
             ->assertSee('Zakašnjeli zadatak')->assertDontSee('Na čekanju zadatak')
@@ -86,11 +86,11 @@ class ProjectsOverviewTest extends TestCase
 
     public function test_filters_are_read_from_url_query(): void
     {
-        $this->task('Na pregledu zadatak', CaseItemStatus::InReview);
-        $this->task('Novi zadatak', CaseItemStatus::New);
+        $this->task('Na pregledu zadatak', CaseItemStatus::Submitted);
+        $this->task('Novi zadatak', CaseItemStatus::NotStarted);
 
         $this->actingAs($this->manager)
-            ->get(route('projects.index', ['faza' => CaseItemStatus::InReview->value, 'q' => 'pregledu']))
+            ->get(route('projects.index', ['faza' => CaseItemStatus::Submitted->value, 'q' => 'pregledu']))
             ->assertOk()
             ->assertSee('Na pregledu zadatak')
             ->assertDontSee('Novi zadatak');
@@ -98,7 +98,7 @@ class ProjectsOverviewTest extends TestCase
 
     public function test_quick_add_creates_new_task_in_case(): void
     {
-        $this->task('Postojeći', CaseItemStatus::InProgress);
+        $this->task('Postojeći', CaseItemStatus::InPreparation);
         $this->actingAs($this->manager);
 
         Livewire::test('pages::projects.index')
@@ -107,12 +107,12 @@ class ProjectsOverviewTest extends TestCase
             ->assertHasNoErrors()
             ->assertSee('Brzo dodan zadatak');
 
-        $this->assertSame(CaseItemStatus::New, $this->case->items()->where('name', 'Brzo dodan zadatak')->firstOrFail()->status);
+        $this->assertSame(CaseItemStatus::NotStarted, $this->case->items()->where('name', 'Brzo dodan zadatak')->firstOrFail()->status);
     }
 
     public function test_viewer_cannot_quick_add_tasks(): void
     {
-        $this->task('Postojeći', CaseItemStatus::InProgress);
+        $this->task('Postojeći', CaseItemStatus::InPreparation);
         $this->actingAs(User::factory()->create(['role' => UserRole::Viewer]));
 
         Livewire::test('pages::projects.index')
@@ -126,7 +126,7 @@ class ProjectsOverviewTest extends TestCase
         foreach (range(1, 3) as $caseNumber) {
             $case = $caseNumber === 1 ? $this->case : $this->makeCase($this->project, 'Predmet '.$caseNumber);
             foreach (range(1, 20) as $taskNumber) {
-                $item = $this->task("Zadatak $caseNumber-$taskNumber", CaseItemStatus::InProgress, ['responsible_user_id' => User::factory()->create()->id], $case);
+                $item = $this->task("Zadatak $caseNumber-$taskNumber", CaseItemStatus::InPreparation, ['responsible_user_id' => User::factory()->create()->id], $case);
                 Comment::create(['commentable_type' => $item->getMorphClass(), 'commentable_id' => $item->id, 'user_id' => $this->manager->id, 'body' => 'Komentar']);
             }
         }

@@ -55,7 +55,7 @@ new #[Title('Moji zadaci')] class extends Component {
     {
         $item = AdministrativeCaseItem::with('administrativeCase.project')->findOrFail($itemId);
         Gate::authorize('update', $item);
-        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InProgress : CaseItemStatus::Completed, auth()->user());
+        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InPreparation : CaseItemStatus::Completed, auth()->user());
         unset($this->tasks, $this->overdueCount);
     }
 }; ?>

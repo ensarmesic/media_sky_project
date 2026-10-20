@@ -30,14 +30,14 @@ class Comment extends Model
         return $this->belongsTo(User::class)->withDefault(['name' => 'Bivši korisnik']);
     }
 
-    public function attachments(): MorphMany
+    public function documents(): MorphMany
     {
-        return $this->morphMany(Attachment::class, 'attachable');
+        return $this->morphMany(ProjectDocument::class, 'documentable');
     }
 
     /** Projekat kojem komentar pripada (preko zadatka ili predmeta). */
     public function project(): ?Project
     {
-        return Attachment::projectOf($this->commentable);
+        return Project::owning($this->commentable);
     }
 }

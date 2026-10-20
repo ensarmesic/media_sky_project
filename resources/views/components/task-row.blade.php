@@ -12,8 +12,8 @@
     @if(($item->comments_count ?? 0) > 0)
         <span class="flex shrink-0 items-center gap-0.5 text-xs text-zinc-400" title="Komentari"><flux:icon.chat-bubble-left variant="micro" class="size-3.5" />{{ $item->comments_count }}</span>
     @endif
-    @if(($item->attachments_count ?? 0) > 0)
-        <span class="flex shrink-0 items-center gap-0.5 text-xs text-zinc-400" title="Prilozi"><flux:icon.paper-clip variant="micro" class="size-3.5" />{{ $item->attachments_count }}</span>
+    @if(($item->documents_count ?? 0) > 0)
+        <span class="flex shrink-0 items-center gap-0.5 text-xs text-zinc-400" title="Prilozi"><flux:icon.paper-clip variant="micro" class="size-3.5" />{{ $item->documents_count }}</span>
     @endif
     @if($item->due_date)
         <span @class(['shrink-0 text-xs tabular-nums', 'font-semibold text-red-600 dark:text-red-400' => $isOverdue, 'text-zinc-500' => ! $isOverdue]) title="{{ $isOverdue ? 'Kasni — rok' : 'Rok' }} {{ $item->due_date->format('d.m.Y.') }}">{{ $item->due_date->format('d.m.') }}</span>

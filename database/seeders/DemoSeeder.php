@@ -2,128 +2,213 @@
 
 namespace Database\Seeders;
 
-use App\Enums\CaseItemPriority;
 use App\Enums\CaseItemStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\UserRole;
 use App\Models\AdministrativeCase;
-use App\Models\AdministrativeCaseItem;
 use App\Models\CaseStatus;
 use App\Models\CaseType;
 use App\Models\Comment;
 use App\Models\Institution;
 use App\Models\Link;
 use App\Models\Project;
+use App\Models\ProjectActivity;
 use App\Models\ProjectCategory;
+use App\Models\ProjectDocument;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Demo podaci (3 projekta, predmeti, zadaci u svim fazama, komentari i linkovi).
+ * Demo podaci prema referentnom dizajnu (docs/dizajn-projekat.png): projekat
+ * "FTTH Banovići" s postupcima i stavkama kao na slici, plus još 2 projekta.
  * Pokreće se samo ručno: php artisan db:seed --class=DemoSeeder
  * Ne mijenja postojeće zapise; ponovno pokretanje preskače već kreirane demo projekte.
  */
 class DemoSeeder extends Seeder
 {
+    /** Najmanji ispravan PDF (za demo dokumente koji se mogu otvoriti). */
+    private const PDF = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF";
+
+    /** @var array<string, User> */
+    private array $users = [];
+
     public function run(): void
     {
         $this->call(DevelopmentSeeder::class);
 
-        $users = collect([
-            ['demo.voditelj', 'Amra Hodžić', UserRole::ProjectManager],
-            ['demo.inzenjer', 'Haris Begić', UserRole::TeamMember],
-            ['demo.pravnik', 'Lejla Mujić', UserRole::TeamMember],
-            ['demo.pregled', 'Tarik Kovač', UserRole::Viewer],
-        ])->mapWithKeys(fn (array $user) => [$user[0] => User::firstOrCreate(
-            ['username' => $user[0]],
-            ['name' => $user[1], 'email' => null, 'password' => 'password', 'role' => $user[2]],
-        )]);
-        $manager = $users['demo.voditelj'];
-        $team = [$manager, $users['demo.inzenjer'], $users['demo.pravnik']];
-
-        $institutions = collect(['Općina Banovići', 'Elektroprivreda BiH', 'JKP Vodovod i kanalizacija', 'BH Telecom', 'Zavod za prostorno uređenje'])
-            ->map(fn (string $name) => Institution::firstOrCreate(['name' => $name]));
-        $statuses = CaseStatus::pluck('id', 'system_key');
-        $types = CaseType::pluck('id', 'name');
-
-        $projects = [
-            ['DEMO-001', 'FTTH mreža Lukavac', 'Telekomunikacije', 'Lukavac', ProjectStatus::InProgress, [
-                ['Urbanistička saglasnost', 'Saglasnost', [
-                    ['Idejni projekat trase', CaseItemStatus::Completed, CaseItemPriority::High, -20],
-                    ['Saglasnost Elektroprivrede BiH', CaseItemStatus::Waiting, CaseItemPriority::High, -2],
-                    ['Saglasnost Vodovoda', CaseItemStatus::InReview, CaseItemPriority::Medium, 3],
-                    ['Katastarski plan', CaseItemStatus::InProgress, CaseItemPriority::Medium, 7],
-                    ['Saglasnost BH Telecoma', CaseItemStatus::New, CaseItemPriority::Low, 14],
-                ]],
-                ['Odobrenje za građenje', 'Dozvola', [
-                    ['Glavni projekat', CaseItemStatus::InProgress, CaseItemPriority::Urgent, 1],
-                    ['Revizija projekta', CaseItemStatus::New, CaseItemPriority::High, 10],
-                    ['Plaćanje naknade za uređenje zemljišta', CaseItemStatus::New, CaseItemPriority::Medium, null],
-                ]],
-            ]],
-            ['DEMO-002', 'Rekonstrukcija vodovoda Centar', 'Infrastruktura', 'Banovići', ProjectStatus::InProgress, [
-                ['Okolinska dozvola', 'Dozvola', [
-                    ['Studija uticaja na okoliš', CaseItemStatus::Completed, CaseItemPriority::High, -30],
-                    ['Javna rasprava', CaseItemStatus::Completed, CaseItemPriority::Medium, -10],
-                    ['Rješenje o okolinskoj dozvoli', CaseItemStatus::Waiting, CaseItemPriority::High, 0],
-                ]],
-                ['Saglasnosti komunalnih preduzeća', 'Saglasnost', [
-                    ['Saglasnost Toplane', CaseItemStatus::Cancelled, CaseItemPriority::Low, null],
-                    ['Saglasnost Elektrodistribucije', CaseItemStatus::InProgress, CaseItemPriority::Medium, 5],
-                    ['Saglasnost BH Telecoma', CaseItemStatus::InReview, CaseItemPriority::Medium, 2],
-                ]],
-            ]],
-            ['DEMO-003', 'Poslovni objekat Industrijska zona', 'Građevinarstvo', 'Živinice', ProjectStatus::Planned, [
-                ['Lokacijska informacija', 'Zahtjev', [
-                    ['Zahtjev za lokacijsku informaciju', CaseItemStatus::Completed, CaseItemPriority::Medium, -5],
-                    ['Geodetski snimak parcele', CaseItemStatus::InProgress, CaseItemPriority::High, -1],
-                    ['Idejno rješenje', CaseItemStatus::New, CaseItemPriority::Medium, 21],
-                ]],
-            ]],
-        ];
-
-        foreach ($projects as [$code, $name, $category, $location, $status, $cases]) {
-            if (Project::where('code', $code)->exists()) {
-                continue;
-            }
-
-            $project = Project::create([
-                'code' => $code, 'name' => $name, 'location' => $location, 'status' => $status,
-                'category_id' => ProjectCategory::firstOrCreate(['name' => $category])->id,
-                'start_date' => today()->subMonths(2), 'planned_end_date' => today()->addMonths(6),
-                'responsible_user_id' => $manager->id, 'created_by' => $manager->id,
-            ]);
-            $project->members()->sync(collect($team)->mapWithKeys(fn (User $user) => [$user->id => ['role' => $user->is($manager) ? 'manager' : 'member']])->all());
-
-            foreach ($cases as $casePosition => [$caseName, $typeName, $items]) {
-                $case = AdministrativeCase::create([
-                    'project_id' => $project->id, 'name' => $caseName, 'position' => $casePosition + 1,
-                    'case_type_id' => $types[$typeName] ?? $types->first(), 'case_status_id' => $statuses['in_preparation'] ?? $statuses->first(),
-                    'institution_id' => $institutions->random()->id, 'responsible_user_id' => $manager->id,
-                    'started_at' => today()->subMonth(), 'created_by' => $manager->id,
-                ]);
-
-                foreach ($items as $position => [$itemName, $itemStatus, $priority, $dueInDays]) {
-                    $assignee = $team[($casePosition + $position) % count($team)];
-                    $item = AdministrativeCaseItem::create([
-                        'administrative_case_id' => $case->id, 'name' => $itemName, 'status' => $itemStatus, 'priority' => $priority,
-                        'due_date' => $dueInDays === null ? null : today()->addDays($dueInDays),
-                        'responsible_user_id' => $assignee->id, 'position' => $position + 1, 'created_by' => $manager->id,
-                        'description' => $position === 0 ? "Dokumentacija se nalazi na zajedničkom disku.\nKontakt osoba u instituciji: šalter 3." : null,
-                    ]);
-
-                    if ($position < 2) {
-                        Comment::create(['commentable_type' => $item->getMorphClass(), 'commentable_id' => $item->id, 'user_id' => $manager->id, 'body' => 'Molim provjeru do kraja sedmice. Detalji na https://example.com/projekti/'.$code]);
-                        Comment::create(['commentable_type' => $item->getMorphClass(), 'commentable_id' => $item->id, 'user_id' => $assignee->id, 'body' => '**Urađeno** djelimično — čekamo potpis odgovorne osobe.']);
-                    }
-                    if ($position === 1) {
-                        Link::create(['linkable_type' => $item->getMorphClass(), 'linkable_id' => $item->id, 'user_id' => $manager->id, 'title' => 'Zahtjev na e-portalu', 'url' => 'https://example.com/e-portal/zahtjev/'.$item->id]);
-                    }
-                }
-
-                Link::create(['linkable_type' => $case->getMorphClass(), 'linkable_id' => $case->id, 'user_id' => $manager->id, 'title' => null, 'url' => 'https://www.fbihvlada.gov.ba']);
-                Comment::create(['commentable_type' => $case->getMorphClass(), 'commentable_id' => $case->id, 'user_id' => $manager->id, 'body' => 'Predmet otvoren, rokovi usaglašeni s investitorom.']);
-            }
+        foreach ([
+            'demo.ensar' => ['Ensar Mešić', UserRole::ProjectManager],
+            'demo.amir.h' => ['Amir Hadžić', UserRole::TeamMember],
+            'demo.amir.k' => ['Amir Kovačević', UserRole::TeamMember],
+            'demo.mirza' => ['Mirza Smajić', UserRole::TeamMember],
+            'demo.nedim' => ['Nedim Halilović', UserRole::TeamMember],
+        ] as $username => [$name, $role]) {
+            $this->users[$username] = User::firstOrCreate(['username' => $username], ['name' => $name, 'email' => null, 'password' => 'password', 'role' => $role]);
         }
+
+        $this->ftthBanovici();
+        $this->simpleProject('DEMO-002', 'Rekonstrukcija vodovoda Centar', 'Zamjena azbestnih cijevi u centru grada', 'Infrastruktura', 'Banovići', ProjectStatus::InProgress, [
+            ['Okolinska dozvola', 'Federalno ministarstvo okoliša', 'shield-check', [
+                ['Studija uticaja na okoliš', CaseItemStatus::Completed, -40, -45],
+                ['Javna rasprava', CaseItemStatus::Completed, -20, -25],
+                ['Rješenje o okolinskoj dozvoli', CaseItemStatus::WaitingResponse, 4, -16],
+            ]],
+            ['Saglasnosti komunalnih preduzeća', 'JKP Vodovod', 'building-office', [
+                ['Saglasnost Elektrodistribucije', CaseItemStatus::InPreparation, 2, null],
+                ['Saglasnost BH Telecoma', CaseItemStatus::Submitted, 9, -1],
+                ['Saglasnost Toplane', CaseItemStatus::Cancelled, null, null],
+            ]],
+        ]);
+        $this->simpleProject('DEMO-003', 'Poslovni objekat Industrijska zona', 'Hala za skladištenje s upravnom zgradom', 'Građevinarstvo', 'Živinice', ProjectStatus::Planned, [
+            ['Lokacijska informacija', 'Općina Živinice', 'map-pin', [
+                ['Zahtjev za lokacijsku informaciju', CaseItemStatus::NotStarted, 12, null],
+                ['Geodetski snimak parcele', CaseItemStatus::NotStarted, 20, null],
+            ]],
+        ]);
+    }
+
+    /** Glavni demo projekat — postupci i stavke kao na referentnom dizajnu. */
+    private function ftthBanovici(): void
+    {
+        if (Project::where('code', 'DEMO-001')->exists()) {
+            return;
+        }
+
+        $ensar = $this->users['demo.ensar'];
+        $project = $this->project('DEMO-001', 'FTTH Banovići', 'Podzemna optička mreža – GPON', 'Telekomunikacije', 'Banovići', ProjectStatus::InProgress, today()->subYear(), today()->addDays(70));
+        $project->update([
+            'progress' => 65,
+            'current_state' => 'Čeka se odgovor EPBiH na zahtjev za saglasnost.',
+            'next_step' => 'Pripremiti dopunu dokumentacije za Vodovod i Kanalizaciju.',
+        ]);
+        $project->members()->sync([
+            $ensar->id => ['role' => Project::ROLE_MANAGER],
+            $this->users['demo.amir.h']->id => ['role' => Project::ROLE_MEMBER],
+            $this->users['demo.mirza']->id => ['role' => Project::ROLE_MEMBER],
+            $this->users['demo.amir.k']->id => ['role' => Project::ROLE_MEMBER],
+            $this->users['demo.nedim']->id => ['role' => Project::ROLE_MEMBER],
+        ]);
+
+        // [naziv, status, institucija/primalac, rok (dana od danas), predaja (dana od danas), odgovorna osoba]
+        $urbanisticka = $this->case($project, 'Urbanistička saglasnost', 'Općina Banovići', 'document-text', 1, [
+            ['Idejni projekat', CaseItemStatus::Completed, 'Interno', -12, -14, 'demo.ensar'],
+            ['ZK izvadci i katastarska dok.', CaseItemStatus::Completed, 'Katastar', -10, -11, 'demo.amir.h'],
+            ['Saglasnost EPBiH', CaseItemStatus::WaitingResponse, 'JP EPBiH', -2, -12, 'demo.amir.k'],
+            ['Saglasnost BH Telecoma', CaseItemStatus::Submitted, 'BH Telecom', -2, -3, 'demo.mirza'],
+            ['Saglasnost Vodovoda i kanalizacije', CaseItemStatus::InPreparation, 'JKP Vodovod', 3, null, 'demo.nedim'],
+            ['Saglasnost Toplane', CaseItemStatus::NotStarted, 'Toplana', 5, null, 'demo.ensar'],
+            ['Saglasnost TXTV-a', CaseItemStatus::NotStarted, 'TXTV', 8, null, 'demo.ensar'],
+            ['Predaja kompletnog zahtjeva', CaseItemStatus::NotStarted, 'Općina Banovići', 13, null, 'demo.ensar'],
+            ['Izdavanje urbanističke saglasnosti', CaseItemStatus::NotStarted, 'Općina Banovići', 69, null, 'demo.ensar'],
+        ]);
+        $this->case($project, 'Građevinska dozvola', 'Općina Banovići', 'document', 2, collect(['Glavni projekat', 'Revizija glavnog projekta', 'Dokaz o pravu građenja', 'Saglasnost vatrogasaca', 'Plaćanje naknada', 'Zahtjev za građevinsku dozvolu', 'Uviđaj na terenu', 'Rješenje o građevinskoj dozvoli'])
+            ->map(fn (string $name, int $index) => [$name, CaseItemStatus::NotStarted, 'Općina Banovići', 30 + $index * 7, null, 'demo.ensar'])->all());
+        $this->case($project, 'Saglasnost Elektroprivrede', 'JP EPBiH', 'bolt', 3, [
+            ['Elaborat priključka', CaseItemStatus::Completed, 'JP EPBiH', -30, -32, 'demo.amir.k'],
+            ['Projekat izmještanja', CaseItemStatus::Completed, 'JP EPBiH', -25, -27, 'demo.amir.k'],
+            ['Uplata naknade', CaseItemStatus::Completed, 'JP EPBiH', -20, -21, 'demo.ensar'],
+            ['Zahtjev za saglasnost', CaseItemStatus::Completed, 'JP EPBiH', -15, -16, 'demo.amir.k'],
+            ['Rješenje o saglasnosti', CaseItemStatus::WaitingResponse, 'JP EPBiH', 6, -4, 'demo.amir.k'],
+            ['Zapisnik o primopredaji', CaseItemStatus::NotStarted, 'JP EPBiH', 20, null, 'demo.amir.k'],
+        ]);
+        $this->case($project, 'Saglasnost upravitelja ceste', 'Direkcija cesta', 'map', 4, [
+            ['Situacija trase uz cestu', CaseItemStatus::Completed, 'Direkcija cesta', -18, -19, 'demo.mirza'],
+            ['Zahtjev za saglasnost', CaseItemStatus::Completed, 'Direkcija cesta', -9, -10, 'demo.mirza'],
+            ['Projekat privremene signalizacije', CaseItemStatus::InPreparation, 'Direkcija cesta', 1, null, 'demo.mirza'],
+            ['Dopuna zahtjeva', CaseItemStatus::Submitted, 'Direkcija cesta', 10, -1, 'demo.mirza'],
+        ]);
+        $this->case($project, 'Katastarska dokumentacija', 'Katastarski ured', 'map-pin', 5, [
+            ['Kopija katastarskog plana', CaseItemStatus::Completed, 'Katastarski ured', -60, -62, 'demo.amir.h'],
+            ['Posjedovni listovi', CaseItemStatus::Completed, 'Katastarski ured', -58, -60, 'demo.amir.h'],
+            ['ZK izvadci', CaseItemStatus::Completed, 'Katastarski ured', -55, -58, 'demo.amir.h'],
+            ['Geodetska podloga', CaseItemStatus::Completed, 'Katastarski ured', -40, -45, 'demo.amir.h'],
+        ]);
+
+        $ideal = $urbanisticka->items->firstWhere('name', 'Idejni projekat');
+        $epbih = $urbanisticka->items->firstWhere('name', 'Saglasnost EPBiH');
+        $this->document($project, $urbanisticka, 'Zahtjev za urbanističku saglasnost', 'outgoing', '03-23-456/26', 0, 'demo.ensar');
+        $this->document($project, $ideal, 'Idejni projekat', 'internal', null, -14, 'demo.ensar');
+        $this->document($project, $urbanisticka->items->firstWhere('name', 'ZK izvadci i katastarska dok.'), 'Katastarski izvadak', 'incoming', '04-12-789/26', -11, 'demo.amir.h');
+        $this->document($project, $urbanisticka, 'Dopis Općine – dopuna', 'incoming', '02-15-321/26', -2, 'demo.ensar');
+
+        Comment::create(['commentable_type' => $epbih->getMorphClass(), 'commentable_id' => $epbih->id, 'user_id' => $ensar->id, 'body' => '@demo.amir.k molim da provjeriš status zahtjeva na šalteru EPBiH.']);
+        Comment::create(['commentable_type' => $epbih->getMorphClass(), 'commentable_id' => $epbih->id, 'user_id' => $this->users['demo.amir.k']->id, 'body' => 'Zvao sam — odgovor očekuju **do kraja sedmice**.']);
+        Link::create(['linkable_type' => $project->getMorphClass(), 'linkable_id' => $project->id, 'user_id' => $ensar->id, 'title' => 'Prostorni plan Općine Banovići', 'url' => 'https://www.banovici.gov.ba']);
+
+        // Posljednje aktivnosti kao na slici (s odgovarajućim datumima).
+        foreach ([
+            [-60, 'case.created', 'Kreiran postupak: Urbanistička saglasnost', $urbanisticka, 'demo.ensar'],
+            [-14, 'task.status', 'Promijenjen status stavke: Idejni projekat', $ideal, 'demo.ensar'],
+            [-11, 'document.uploaded', 'Dodana dokumentacija: Katastarski izvadak', $urbanisticka, 'demo.amir.h'],
+            [-2, 'document.uploaded', 'Zaprimljen dopis – potrebna dopuna', $urbanisticka, 'demo.ensar'],
+            [0, 'task.submitted', 'Predat zahtjev za urbanističku saglasnost', $urbanisticka, 'demo.ensar'],
+        ] as [$days, $event, $title, $subject, $user]) {
+            $activity = ProjectActivity::create(['project_id' => $project->id, 'user_id' => $this->users[$user]->id, 'event_type' => $event, 'subject_type' => $subject->getMorphClass(), 'subject_id' => $subject->id, 'title' => $title]);
+            $activity->forceFill(['created_at' => now()->addDays($days), 'updated_at' => now()->addDays($days)])->save();
+        }
+    }
+
+    /** @param  list<array{0: string, 1: string, 2: string, 3: list<array{0: string, 1: CaseItemStatus, 2: ?int, 3: ?int}>}>  $cases */
+    private function simpleProject(string $code, string $name, string $description, string $category, string $location, ProjectStatus $status, array $cases): void
+    {
+        if (Project::where('code', $code)->exists()) {
+            return;
+        }
+
+        $project = $this->project($code, $name, $description, $category, $location, $status, today()->subMonths(3), today()->addMonths(8));
+        $project->members()->sync([$this->users['demo.ensar']->id => ['role' => Project::ROLE_MANAGER], $this->users['demo.mirza']->id => ['role' => Project::ROLE_MEMBER]]);
+        foreach ($cases as $position => [$caseName, $institution, $icon, $items]) {
+            $this->case($project, $caseName, $institution, $icon, $position + 1, array_map(fn (array $item) => [$item[0], $item[1], $institution, $item[2], $item[3], 'demo.mirza'], $items));
+        }
+    }
+
+    private function project(string $code, string $name, string $description, string $category, string $location, ProjectStatus $status, mixed $start, mixed $end): Project
+    {
+        return Project::create([
+            'code' => $code, 'name' => $name, 'description' => $description, 'location' => $location, 'status' => $status,
+            'category_id' => ProjectCategory::firstOrCreate(['name' => $category])->id,
+            'start_date' => $start, 'planned_end_date' => $end,
+            'responsible_user_id' => $this->users['demo.ensar']->id, 'created_by' => $this->users['demo.ensar']->id,
+        ]);
+    }
+
+    /** @param  list<array{0: string, 1: CaseItemStatus, 2: string, 3: ?int, 4: ?int, 5: string}>  $items */
+    private function case(Project $project, string $name, string $institution, string $icon, int $position, array $items): AdministrativeCase
+    {
+        $case = AdministrativeCase::create([
+            'project_id' => $project->id, 'name' => $name, 'icon' => $icon, 'position' => $position,
+            'institution_id' => Institution::firstOrCreate(['name' => $institution])->id,
+            'case_type_id' => CaseType::firstOrCreate(['name' => 'Saglasnost'])->id,
+            'case_status_id' => CaseStatus::firstOrCreate(['system_key' => 'in_preparation'], ['name' => 'U pripremi'])->id,
+            'responsible_user_id' => $this->users['demo.ensar']->id, 'started_at' => today()->subMonths(2), 'created_by' => $this->users['demo.ensar']->id,
+        ]);
+
+        foreach ($items as $index => [$itemName, $status, $recipient, $dueInDays, $submittedDaysAgo, $responsible]) {
+            $case->items()->create([
+                'name' => $itemName, 'status' => $status, 'position' => $index + 1,
+                'recipient' => $recipient,
+                'due_date' => $dueInDays === null ? null : today()->addDays($dueInDays),
+                'submitted_at' => $submittedDaysAgo === null ? null : today()->addDays($submittedDaysAgo),
+                'response_at' => $status === CaseItemStatus::Completed && $submittedDaysAgo !== null ? today()->addDays($submittedDaysAgo + 2)->min(today()) : null,
+                'responsible_user_id' => $this->users[$responsible]->id,
+                'created_by' => $this->users['demo.ensar']->id,
+            ]);
+        }
+
+        return $case->load('items');
+    }
+
+    private function document(Project $project, mixed $owner, string $name, string $direction, ?string $protocol, int $days, string $user): void
+    {
+        $path = 'project-documents/'.$project->id.'/demo-'.str()->slug($name).'.pdf';
+        Storage::disk(ProjectDocument::DISK)->put($path, self::PDF);
+
+        ProjectDocument::create([
+            'project_id' => $project->id, 'documentable_type' => $owner->getMorphClass(), 'documentable_id' => $owner->id,
+            'uploaded_by' => $this->users[$user]->id, 'name' => $name, 'original_name' => str()->slug($name).'.pdf',
+            'path' => $path, 'mime_type' => 'application/pdf', 'size' => strlen(self::PDF),
+            'direction' => $direction, 'protocol_number' => $protocol, 'document_date' => today()->addDays($days), 'version' => 1,
+        ])->forceFill(['created_at' => now()->addDays($days)])->save();
     }
 }

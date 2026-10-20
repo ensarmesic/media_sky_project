@@ -80,7 +80,7 @@ Artisan::command('items:send-waiting-reminders', function (NotificationDispatchS
     AdministrativeCaseItem::query()
         ->with(['administrativeCase.responsible', 'responsible'])
         ->where('is_active', true)
-        ->where('status', CaseItemStatus::Waiting->value)
+        ->where('status', CaseItemStatus::WaitingResponse->value)
         ->whereNotNull('response_reminder_interval')
         ->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))
         ->lazyById()
@@ -119,7 +119,7 @@ Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uklj
                 ->map(fn (AdministrativeCase $case) => $case->name.' ('.$case->project->name.', rok '.$case->response_due_at->format('d.m.Y.').')')->all();
 
             $waitingItems = $openItems()->with('administrativeCase.project')
-                ->where('status', CaseItemStatus::Waiting->value)
+                ->where('status', CaseItemStatus::WaitingResponse->value)
                 ->whereIn('administrative_case_id', AdministrativeCase::query()->whereIn('project_id', $projectIds)->select('id'))
                 ->where(fn ($query) => $query->whereNull('submitted_at')->orWhereDate('submitted_at', '<', today()->subDays($waitingLimit)))
                 ->limit(10)->get()->map($describe)->all();

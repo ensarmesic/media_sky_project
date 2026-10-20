@@ -15,24 +15,34 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
- * Zadatak predmeta. Tehnički naziv ostaje "stavka administrativnog predmeta",
- * u interfejsu se zove "zadatak".
+ * Stavka postupka (u interfejsu "Stavka"; u kodu stavka administrativnog predmeta).
+ * Institucija/primalac = institution_id ili slobodan tekst recipient.
  */
 #[Fillable(['administrative_case_id', 'name', 'description', 'type', 'status', 'priority', 'outcome', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'completed_at', 'response_reminder_interval', 'response_reminded_at', 'deadline_reminded_at', 'overdue_reminded_at', 'is_blocked', 'blocked_reason', 'progress_weight', 'position', 'is_required_for_closure', 'is_active', 'notes', 'created_by'])]
 class AdministrativeCaseItem extends Model
 {
     protected $attributes = [
-        'status' => 'new',
+        'status' => 'not_started',
         'priority' => 'medium',
         'is_active' => true,
     ];
 
     protected static function booted(): void
     {
-        // zavrseno_at se postavlja automatski kad status pređe u "Završeno".
         static::saving(function (AdministrativeCaseItem $item): void {
-            if ($item->isDirty('status')) {
-                $item->completed_at = $item->status === CaseItemStatus::Completed ? ($item->completed_at ?? now()) : null;
+            if (! $item->isDirty('status')) {
+                return;
+            }
+            // Prelaz u "Predato" postavlja datum predaje ako je prazan.
+            if ($item->status === CaseItemStatus::Submitted && $item->submitted_at === null) {
+                $item->submitted_at = today();
+            }
+            // Prelaz u "Završeno" postavlja datum odgovora (ako je prazan) i vrijeme završetka.
+            if ($item->status === CaseItemStatus::Completed) {
+                $item->response_at ??= today();
+                $item->completed_at ??= now();
+            } else {
+                $item->completed_at = null;
             }
         });
     }
@@ -42,22 +52,49 @@ class AdministrativeCaseItem extends Model
         return ['type' => CaseItemType::class, 'status' => CaseItemStatus::class, 'priority' => CaseItemPriority::class, 'outcome' => CaseOutcome::class, 'start_date' => 'date', 'submitted_at' => 'date', 'response_at' => 'date', 'due_date' => 'date', 'completed_at' => 'datetime', 'response_reminded_at' => 'datetime', 'deadline_reminded_at' => 'datetime', 'overdue_reminded_at' => 'datetime', 'is_blocked' => 'boolean', 'progress_weight' => 'decimal:2', 'is_required_for_closure' => 'boolean', 'is_active' => 'boolean'];
     }
 
-    /** Aktivan = nije uklonjen i nije završen/otkazan. */
+    /** Aktivna = nije uklonjena i nije završena/otkazana. */
     public function isOpen(): bool
     {
         return $this->is_active && ! $this->status->isClosed();
     }
 
-    /** Kasni = rok je prije današnjeg dana, a zadatak nije završen ni otkazan. */
+    /** Kasni = rok je prošao (prije danas), a stavka nije završena ni otkazana. */
     public function isOverdue(): bool
     {
         return $this->isOpen() && $this->due_date !== null && $this->due_date->lt(today());
     }
 
+    /** Rok je danas ili u narednih $days dana. */
+    public function isDueWithin(int $days): bool
+    {
+        return $this->isOpen() && $this->due_date !== null && $this->due_date->between(today(), today()->addDays($days));
+    }
+
     public function isDueSoon(): bool
     {
-        return $this->isOpen() && $this->due_date !== null
-            && $this->due_date->between(today(), today()->addDays((int) config('projectflow.reminders.due_soon_days', 7)));
+        return $this->isDueWithin((int) config('projectflow.reminders.due_soon_days', 3));
+    }
+
+    /** Broj dana do roka (negativno = kasni). */
+    public function daysUntilDue(): ?int
+    {
+        return $this->due_date === null ? null : (int) today()->diffInDays($this->due_date, false);
+    }
+
+    /** Dana čeka odgovor = danas − datum predaje (samo za "Čeka odgovor"). */
+    public function daysWaiting(): ?int
+    {
+        if ($this->status !== CaseItemStatus::WaitingResponse || $this->submitted_at === null) {
+            return null;
+        }
+
+        return (int) $this->submitted_at->diffInDays(today());
+    }
+
+    /** Naziv institucije ili slobodno upisani primalac. */
+    public function recipientName(): ?string
+    {
+        return $this->institution?->name ?? ($this->recipient ?: null);
     }
 
     public function scopeOpen(Builder $query): Builder
@@ -96,7 +133,7 @@ class AdministrativeCaseItem extends Model
         return $this->hasMany(AdministrativeCaseItemActivity::class);
     }
 
-    /** Centralni log aktivnosti (project_activities sa ovim zadatkom kao subjektom). */
+    /** Centralni log aktivnosti (project_activities sa ovom stavkom kao subjektom). */
     public function activityLog(): MorphMany
     {
         return $this->morphMany(ProjectActivity::class, 'subject');
@@ -107,9 +144,9 @@ class AdministrativeCaseItem extends Model
         return $this->morphMany(Comment::class, 'commentable');
     }
 
-    public function attachments(): MorphMany
+    public function documents(): MorphMany
     {
-        return $this->morphMany(Attachment::class, 'attachable');
+        return $this->morphMany(ProjectDocument::class, 'documentable');
     }
 
     public function links(): MorphMany
@@ -122,7 +159,7 @@ class AdministrativeCaseItem extends Model
         return $this->hasMany(ChecklistItem::class)->orderBy('position')->orderBy('id');
     }
 
-    /** Direktan link na detalj zadatka. */
+    /** Direktan link na detalj stavke. */
     public function url(): string
     {
         return route('tasks.show', $this->id);

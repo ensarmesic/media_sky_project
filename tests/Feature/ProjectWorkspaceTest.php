@@ -93,12 +93,12 @@ class ProjectWorkspaceTest extends TestCase
         $this->actingAs($member);
 
         $component = Livewire::test('pages::projects.show', ['project' => $project])
-            ->call('changeItemStatus', $mine->id, CaseItemStatus::InReview->value)
+            ->call('changeItemStatus', $mine->id, CaseItemStatus::Submitted->value)
             ->assertHasNoErrors();
-        $this->assertSame(CaseItemStatus::InReview, $mine->fresh()->status);
+        $this->assertSame(CaseItemStatus::Submitted, $mine->fresh()->status);
 
         $component->call('changeItemStatus', $other->id, CaseItemStatus::Completed->value)->assertForbidden();
-        $this->assertSame(CaseItemStatus::New, $other->fresh()->status);
+        $this->assertSame(CaseItemStatus::NotStarted, $other->fresh()->status);
     }
 
     public function test_task_link_opens_project_with_task_panel(): void

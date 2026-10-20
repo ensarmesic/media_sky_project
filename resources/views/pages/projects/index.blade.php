@@ -76,7 +76,7 @@ new #[Title('Projekti')] class extends Component {
             ->open()
             ->whereIn('administrative_case_id', $cases->modelKeys())
             ->with('responsible:id,name')
-            ->withCount(['comments', 'attachments'])
+            ->withCount(['comments', 'documents'])
             ->when($this->phase === 'overdue', fn (Builder $query) => $query->whereDate('due_date', '<', today()))
             ->when($this->phase !== '' && $this->phase !== 'overdue', fn (Builder $query) => $query->where('status', $this->phase))
             ->when($this->onlyMine, fn (Builder $query) => $query->where('responsible_user_id', auth()->id()))
@@ -132,7 +132,7 @@ new #[Title('Projekti')] class extends Component {
     }
 }; ?>
 
-@php($phases = ['' => 'Sve', CaseItemStatus::InProgress->value => 'U toku', CaseItemStatus::Waiting->value => 'Na čekanju', CaseItemStatus::InReview->value => 'Na pregledu', 'overdue' => 'Kasni'])
+@php($phases = ['' => 'Sve', CaseItemStatus::InPreparation->value => 'U toku', CaseItemStatus::WaitingResponse->value => 'Na čekanju', CaseItemStatus::Submitted->value => 'Na pregledu', 'overdue' => 'Kasni'])
 @php($hasFilters = $search !== '' || $phase !== '' || $onlyMine || $projectId !== '')
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-5">

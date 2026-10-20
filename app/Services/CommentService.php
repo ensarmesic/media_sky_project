@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\AdministrativeCase;
 use App\Models\AdministrativeCaseItem;
-use App\Models\Attachment;
 use App\Models\Comment;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,7 +22,7 @@ class CommentService
 
     private function log(Model $subject, User $user, string $event, string $title, array $metadata = []): void
     {
-        $project = Attachment::projectOf($subject);
+        $project = Project::owning($subject);
         if ($project !== null) {
             app(ProjectActivityService::class)->record($project, $event, $title, $user, $subject, null, $metadata);
         }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CaseItemStatus;
 use App\Enums\CaseOutcome;
+use App\Enums\CaseProgressStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['project_id', 'name', 'description', 'case_type_id', 'institution_id', 'responsible_user_id', 'started_at', 'submitted_at', 'response_due_at', 'reminder_days_before', 'deadline_reminded_at', 'overdue_reminded_at', 'case_status_id', 'outcome', 'notes', 'closed_at', 'progress_weight', 'position', 'is_archived', 'archived_at', 'created_by'])]
+#[Fillable(['project_id', 'name', 'icon', 'description', 'case_type_id', 'institution_id', 'responsible_user_id', 'started_at', 'submitted_at', 'response_due_at', 'reminder_days_before', 'deadline_reminded_at', 'overdue_reminded_at', 'case_status_id', 'outcome', 'notes', 'closed_at', 'progress_weight', 'position', 'is_archived', 'archived_at', 'created_by'])]
 class AdministrativeCase extends Model
 {
     use HasFactory;
@@ -96,9 +97,34 @@ class AdministrativeCase extends Model
         return $this->morphMany(Comment::class, 'commentable');
     }
 
-    public function attachments(): MorphMany
+    public function documents(): MorphMany
     {
-        return $this->morphMany(Attachment::class, 'attachable');
+        return $this->morphMany(ProjectDocument::class, 'documentable');
+    }
+
+    /** Centralni log aktivnosti (project_activities s ovim postupkom kao subjektom). */
+    public function activityLog(): MorphMany
+    {
+        return $this->morphMany(ProjectActivity::class, 'subject');
+    }
+
+    /** Status postupka izračunat iz statusa aktivnih stavki (koristi učitane stavke ako postoje). */
+    public function progressStatus(): CaseProgressStatus
+    {
+        $items = ($this->relationLoaded('items') ? $this->items : $this->items()->get())->where('is_active', true);
+
+        return CaseProgressStatus::fromItemStatuses($items->pluck('status'));
+    }
+
+    /** @return array{done: int, total: int, percent: int} Završene / sve stavke (bez otkazanih). */
+    public function itemCounts(): array
+    {
+        $items = ($this->relationLoaded('items') ? $this->items : $this->items()->get())
+            ->where('is_active', true)
+            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::Cancelled);
+        $done = $items->where('status', CaseItemStatus::Completed)->count();
+
+        return ['done' => $done, 'total' => $items->count(), 'percent' => $items->isEmpty() ? 0 : (int) round($done / $items->count() * 100)];
     }
 
     public function links(): MorphMany

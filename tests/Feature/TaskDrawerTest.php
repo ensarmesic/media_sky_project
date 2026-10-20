@@ -59,7 +59,7 @@ class TaskDrawerTest extends TestCase
 
         Livewire::test('task-drawer')
             ->call('open', $this->task->id)
-            ->set('form.status', CaseItemStatus::InReview->value)
+            ->set('form.status', CaseItemStatus::Submitted->value)
             ->set('form.priority', CaseItemPriority::Urgent->value)
             ->set('form.responsible_user_id', (string) $assignee->id)
             ->set('form.due_date', today()->addWeek()->toDateString())
@@ -69,13 +69,13 @@ class TaskDrawerTest extends TestCase
             ->assertDispatched('task-updated');
 
         $task = $this->task->fresh();
-        $this->assertSame(CaseItemStatus::InReview, $task->status);
+        $this->assertSame(CaseItemStatus::Submitted, $task->status);
         $this->assertSame(CaseItemPriority::Urgent, $task->priority);
         $this->assertSame($assignee->id, $task->responsible_user_id);
         $this->assertSame('Saglasnost ViK', $task->name);
         $this->assertSame(today()->addWeek()->toDateString(), $task->due_date->toDateString());
         $this->assertSame(
-            ['status', 'priority', 'responsible_user_id', 'due_date', 'name', 'description'],
+            ['status', 'submitted_at', 'priority', 'responsible_user_id', 'due_date', 'name', 'description'],
             $task->activityLog()->where('event_type', 'like', 'task.%')->where('event_type', '!=', 'task.created')->orderBy('id')->get()->pluck('metadata.field')->all(),
         );
     }
@@ -130,7 +130,9 @@ class TaskDrawerTest extends TestCase
 
     public function test_viewer_can_read_but_not_change_task(): void
     {
-        $this->actingAs(User::factory()->create(['role' => UserRole::Viewer]));
+        $viewer = User::factory()->create(['role' => UserRole::Viewer]);
+        $this->task->administrativeCase->project->members()->attach($viewer, ['role' => 'member']);
+        $this->actingAs($viewer);
 
         Livewire::test('task-drawer')
             ->call('open', $this->task->id)
@@ -138,7 +140,7 @@ class TaskDrawerTest extends TestCase
             ->set('form.status', CaseItemStatus::Completed->value)
             ->assertForbidden();
 
-        $this->assertSame(CaseItemStatus::New, $this->task->fresh()->status);
+        $this->assertSame(CaseItemStatus::NotStarted, $this->task->fresh()->status);
     }
 
     public function test_task_from_inaccessible_project_is_not_opened(): void

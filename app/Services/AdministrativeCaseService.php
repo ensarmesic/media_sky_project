@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Enums\CaseItemStatus;
 use App\Enums\NotificationKind;
 use App\Models\AdministrativeCase;
+use App\Models\CaseStatus;
 use App\Models\CaseTemplate;
+use App\Models\CaseType;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -18,10 +20,18 @@ class AdministrativeCaseService
         $data = $this->normalizeNullableFields($data);
 
         return DB::transaction(function () use ($data, $user) {
+            // Postupak se u interfejsu unosi samo s nazivom, institucijom i ikonom;
+            // obavezne tehničke kolone dobijaju podrazumijevane vrijednosti.
             $data['position'] ??= ((int) AdministrativeCase::where('project_id', $data['project_id'] ?? null)->max('position')) + 1;
+            $data['case_type_id'] ??= CaseType::where('is_active', true)->orderBy('id')->value('id') ?? CaseType::firstOrCreate(['name' => 'Ostalo'])->id;
+            $data['case_status_id'] ??= CaseStatus::orderBy('position')->value('id') ?? CaseStatus::firstOrCreate(['system_key' => 'in_preparation'], ['name' => 'U pripremi'])->id;
+            $data['responsible_user_id'] ??= $user->id;
+            $data['started_at'] ??= today();
+
             $case = AdministrativeCase::create([...$data, 'created_by' => $user->id]);
-            $case->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Predmet kreiran']);
-            app(ProjectActivityService::class)->record($case->project, 'case_created', 'Kreiran predmet: '.$case->name, $user, $case);
+            $case->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Postupak kreiran']);
+            app(ProjectActivityService::class)->record($case->project, 'case.created', 'Kreiran postupak: '.$case->name, $user, $case);
+            $case->project->ensureMember($case->responsible);
 
             return $case;
         });
@@ -123,7 +133,7 @@ class AdministrativeCaseService
             foreach ($case->items()->where('is_active', true)->orderBy('position')->get() as $item) {
                 $itemCopy = $item->replicate();
                 $itemCopy->administrative_case_id = $copy->id;
-                $itemCopy->status = CaseItemStatus::New;
+                $itemCopy->status = CaseItemStatus::NotStarted;
                 $itemCopy->submitted_at = null;
                 $itemCopy->response_at = null;
                 $itemCopy->completed_at = null;
@@ -150,7 +160,7 @@ class AdministrativeCaseService
             foreach ($source->items()->where('is_active', true)->orderBy('position')->get() as $item) {
                 $itemCopy = $item->replicate();
                 $itemCopy->administrative_case_id = $case->id;
-                $itemCopy->status = CaseItemStatus::New;
+                $itemCopy->status = CaseItemStatus::NotStarted;
                 $itemCopy->submitted_at = null;
                 $itemCopy->response_at = null;
                 $itemCopy->completed_at = null;

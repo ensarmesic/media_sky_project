@@ -20,10 +20,10 @@ class ProjectPolicy
 
     public function view(User $user, Project $project): bool
     {
-        return $user->role === UserRole::Viewer
-            || $project->responsible_user_id === $user->id
+        // Samo članovi projekta (uz odgovornu osobu i autora); admin prolazi kroz before().
+        return $project->responsible_user_id === $user->id
             || $project->created_by === $user->id
-            || Project::visibleTo($user)->whereKey($project->id)->exists();
+            || $project->members()->whereKey($user->id)->exists();
     }
 
     public function create(User $user): bool
