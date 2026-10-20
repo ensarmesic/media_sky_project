@@ -99,6 +99,18 @@ class AdministrativeCaseService
         return $case->refresh();
     }
 
+    /** Drag & drop: postupak se premješta na zadatu poziciju (0 = prvi) među aktivnim postupcima projekta. */
+    public function moveTo(AdministrativeCase $case, int $position): void
+    {
+        DB::transaction(function () use ($case, $position) {
+            $ids = $case->project->administrativeCases()->where('is_archived', false)->whereKeyNot($case->id)->pluck('id')->all();
+            array_splice($ids, max(0, min($position, count($ids))), 0, [$case->id]);
+            foreach ($ids as $index => $id) {
+                AdministrativeCase::whereKey($id)->update(['position' => $index + 1]);
+            }
+        });
+    }
+
     /** Promjena redoslijeda postupaka unutar projekta. */
     public function movePosition(AdministrativeCase $case, string $direction): void
     {

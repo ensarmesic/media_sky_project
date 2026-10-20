@@ -2,268 +2,170 @@
 
 namespace App\Services;
 
-use App\Enums\DocumentDirection;
-use App\Enums\DocumentSyncStatus;
 use App\Enums\NotificationKind;
 use App\Models\AdministrativeCase;
 use App\Models\AdministrativeCaseItem;
-use App\Models\DocumentReference;
+use App\Models\Comment;
 use App\Models\Project;
 use App\Models\ProjectDocument;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
 
+/** Dokumenti na projektu, postupku, stavci i komentaru (privatni disk, verzije). */
 class DocumentService
 {
-    /** Način A — direktni upload datoteke u privatni storage. */
-    public function storeFile(Project $project, User $user, UploadedFile $file, array $data = []): ProjectDocument
+    /** Pravila za upload fajla (tip po ekstenziji + konfigurabilan limit veličine). */
+    public static function fileRules(): array
     {
-        Gate::authorize('update', $project);
+        return ['required', 'file', 'extensions:'.config('projectflow.documents.allowed_extensions'), 'max:'.config('projectflow.documents.max_size')];
+    }
 
-        $validated = validator($data + ['file' => $file], $this->fileRules($project))->validate();
+    /** Poruke grešaka za upload na bosanskom. */
+    public static function fileMessages(string $attribute = 'file'): array
+    {
+        $maxMb = (int) round(config('projectflow.documents.max_size') / 1024);
 
-        $case = isset($validated['administrative_case_id']) ? AdministrativeCase::find($validated['administrative_case_id']) : null;
-        $item = isset($validated['administrative_case_item_id']) ? AdministrativeCaseItem::find($validated['administrative_case_item_id']) : null;
-        $this->assertItemBelongsToProject($project, $item);
+        return [
+            "{$attribute}.max" => "Fajl je prevelik. Najveća dozvoljena veličina je {$maxMb} MB.",
+            "{$attribute}.extensions" => 'Ova vrsta fajla nije dozvoljena. Dozvoljeno: '.config('projectflow.documents.allowed_labels').'.',
+            "{$attribute}.uploaded" => "Upload nije uspio. Provjerite veličinu fajla (najviše {$maxMb} MB).",
+            "{$attribute}.required" => 'Odaberite fajl.',
+        ];
+    }
 
-        return DB::transaction(function () use ($project, $user, $validated, $file) {
-            $path = $file->store("project-documents/{$project->id}", 'local');
-            $document = $project->documents()->create([
-                'administrative_case_id' => $validated['administrative_case_id'] ?? null,
-                'administrative_case_item_id' => $validated['administrative_case_item_id'] ?? null,
+    /** Ko smije dodavati dokumente na zapis. */
+    public static function canUpload(User $user, Model $owner): bool
+    {
+        return match (true) {
+            $owner instanceof Project => $user->can('update', $owner),
+            $owner instanceof AdministrativeCase => $user->can('update', $owner),
+            $owner instanceof AdministrativeCaseItem => $user->can('update', $owner),
+            $owner instanceof Comment => $owner->user_id === $user->id || $user->isAdministrator(),
+            default => false,
+        };
+    }
+
+    /**
+     * @param  array{name?: ?string, direction?: ?string, protocol_number?: ?string, document_date?: ?string, description?: ?string}  $meta
+     */
+    public function store(Model $owner, User $user, UploadedFile $file, array $meta = []): ProjectDocument
+    {
+        abort_unless(self::canUpload($user, $owner), 403);
+        $project = Project::owning($owner);
+        abort_if($project === null, 404);
+
+        validator(['file' => $file, ...$meta], [
+            'file' => self::fileRules(),
+            'name' => ['nullable', 'string', 'max:255'],
+            'direction' => ['nullable', Rule::in(array_keys(ProjectDocument::DIRECTIONS))],
+            'protocol_number' => ['nullable', 'string', 'max:100'],
+            'document_date' => ['nullable', 'date'],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ], self::fileMessages())->validate();
+
+        return DB::transaction(function () use ($owner, $user, $file, $meta, $project) {
+            $document = ProjectDocument::create([
+                'project_id' => $project->id,
+                'documentable_type' => $owner->getMorphClass(),
+                'documentable_id' => $owner->getKey(),
+                'administrative_case_id' => match (true) {
+                    $owner instanceof AdministrativeCase => $owner->id,
+                    $owner instanceof AdministrativeCaseItem => $owner->administrative_case_id,
+                    default => null,
+                },
+                'administrative_case_item_id' => $owner instanceof AdministrativeCaseItem ? $owner->id : null,
                 'uploaded_by' => $user->id,
-                'name' => ($validated['name'] ?? null) ?: $file->getClientOriginalName(),
-                'path' => $path,
+                'name' => filled($meta['name'] ?? null) ? trim($meta['name']) : $file->getClientOriginalName(),
+                'original_name' => $file->getClientOriginalName(),
+                'path' => $file->store("project-documents/{$project->id}", ProjectDocument::DISK),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
-                'description' => $validated['description'] ?? null,
-                'document_type' => $validated['document_type'] ?? null,
+                'direction' => $meta['direction'] ?? null ?: null,
+                'protocol_number' => filled($meta['protocol_number'] ?? null) ? trim($meta['protocol_number']) : null,
+                'document_date' => $meta['document_date'] ?? null ?: null,
+                'description' => $meta['description'] ?? null ?: null,
                 'version' => 1,
             ]);
-            $this->syncItems($document, $validated['item_ids'] ?? []);
-            app(ProjectActivityService::class)->record($project, 'document_uploaded', 'Dodan interni dokument: '.$document->name, $user, $document);
-            $this->notifyWatchers($project, 'Novi dokument na projektu: '.$document->name);
+
+            $this->log($document, $user, 'document.uploaded', 'Dodan dokument: '.$document->name);
+            $this->notifyItemResponsible($document, 'Novi dokument na vašoj stavci: '.$document->name);
 
             return $document;
         });
     }
 
-    /** Način B — vanjski link na dokument u drugoj aplikaciji. */
-    public function storeExternalLink(Project $project, User $user, array $data): DocumentReference
+    /** Nova verzija: stara ostaje sačuvana (replaced_by_id), nova dobija verziju + 1. */
+    public function replaceVersion(ProjectDocument $document, User $user, UploadedFile $file): ProjectDocument
     {
-        Gate::authorize('update', $project);
+        abort_unless($document->replaced_by_id === null, 422, 'Nova verzija se dodaje na najnoviju verziju dokumenta.');
+        Gate::authorize('view', $document);
+        abort_unless($document->documentable === null || self::canUpload($user, $document->documentable), 403);
 
-        $validated = validator($data, $this->referenceRules($project))->validate();
-        $this->assertSafeUrl($validated['url']);
+        validator(['file' => $file], ['file' => self::fileRules()], self::fileMessages())->validate();
 
-        return DB::transaction(function () use ($project, $validated) {
-            $reference = $this->createReference($project, $validated, 'Vanjski link', $validated['url']);
-            $this->syncItems($reference, $validated['item_ids'] ?? []);
-
-            return $reference;
-        });
-    }
-
-    /** Način C — priprema za interni protokol; sprema metapodatke bez kopiranja datoteke. */
-    public function storeProtocolReference(Project $project, User $user, array $data): DocumentReference
-    {
-        Gate::authorize('update', $project);
-
-        $rules = $this->referenceRules($project);
-        unset($rules['url'], $rules['source_app'], $rules['item_ids'], $rules['item_ids.*']);
-        $rules['external_document_id'] = ['required', 'string', 'max:255'];
-
-        $validated = validator($data, $rules)->validate();
-
-        return DB::transaction(fn () => $this->createReference($project, $validated, 'Interni protokol', $validated['external_document_id']));
-    }
-
-    /** Zamjena datoteke novom verzijom — prethodna verzija ostaje sačuvana. */
-    public function replaceFileVersion(ProjectDocument $document, User $user, UploadedFile $file, ?string $name = null): ProjectDocument
-    {
-        Gate::authorize('update', $document->project);
-
-        validator(['file' => $file], [
-            'file' => ['required', 'file', 'mimes:'.config('projectflow.documents.allowed_mimes'), 'max:'.config('projectflow.documents.max_size')],
-        ])->validate();
-
-        return DB::transaction(function () use ($document, $user, $file, $name) {
-            $path = $file->store("project-documents/{$document->project_id}", 'local');
-            $newVersion = $document->project->documents()->create([
-                'administrative_case_id' => $document->administrative_case_id,
-                'administrative_case_item_id' => $document->administrative_case_item_id,
+        return DB::transaction(function () use ($document, $user, $file) {
+            $newVersion = $document->replicate(['replaced_by_id']);
+            $newVersion->fill([
                 'uploaded_by' => $user->id,
-                'name' => $name ?: $file->getClientOriginalName(),
-                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'path' => $file->store("project-documents/{$document->project_id}", ProjectDocument::DISK),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
-                'description' => $document->description,
-                'document_type' => $document->document_type,
                 'version' => $document->version + 1,
-            ]);
-            $document->update(['replaced_by_id' => $newVersion->id, 'is_archived' => true]);
-            $newVersion->linkedItems()->sync($document->linkedItems()->pluck('administrative_case_items.id'));
-            app(ProjectActivityService::class)->record($document->project, 'document_replaced', 'Dokument zamijenjen novom verzijom: '.$newVersion->name, $user, $newVersion, 'Verzija '.$document->version.' → '.$newVersion->version);
+                'is_archived' => false,
+            ])->save();
+            $document->update(['replaced_by_id' => $newVersion->id]);
+
+            $this->log($newVersion, $user, 'document.version', 'Nova verzija dokumenta: '.$newVersion->name.' (verzija '.$newVersion->version.')');
 
             return $newVersion;
         });
     }
 
-    /** Arhiviranje dokumenata — podaci i istorija ostaju sačuvani. */
-    public function archiveDocument(ProjectDocument $document, User $user, bool $archive = true): void
+    /** Brisanje dokumenta i svih njegovih starijih verzija (zapisi i fajlovi). */
+    public function delete(ProjectDocument $document, User $user): void
     {
-        Gate::authorize('update', $document->project);
-        $document->update(['is_archived' => $archive]);
-        app(ProjectActivityService::class)->record($document->project, $archive ? 'document_archived' : 'document_restored', ($archive ? 'Arhiviran dokument: ' : 'Dokument vraćen iz arhive: ').$document->name, $user, $document);
-    }
+        Gate::authorize('delete', $document);
 
-    public function archiveReference(DocumentReference $reference, User $user, bool $archive = true): void
-    {
-        Gate::authorize('update', $reference->project);
-        $reference->update(['is_archived' => $archive]);
-        app(ProjectActivityService::class)->record($reference->project, $archive ? 'document_archived' : 'document_restored', ($archive ? 'Arhiviran dokument: ' : 'Dokument vraćen iz arhive: ').$reference->title, $user, $reference);
-    }
-
-    /** Uređivanje metapodataka reference (vanjski link / protokol). */
-    public function updateReference(DocumentReference $reference, User $user, array $data): DocumentReference
-    {
-        Gate::authorize('update', $reference->project);
-
-        $rules = $this->referenceRules($reference->project);
-        unset($rules['administrative_case_id'], $rules['administrative_case_item_id'], $rules['item_ids'], $rules['item_ids.*']);
-        $rules['url'] = ['nullable', 'string', 'max:2048', 'url'];
-
-        $validated = validator($data, $rules)->validate();
-        if (($validated['url'] ?? null) !== null) {
-            $this->assertSafeUrl($validated['url']);
-        }
-        $reference->update($validated);
-        app(ProjectActivityService::class)->record($reference->project, 'document_updated', 'Ažurirani podaci dokumenta: '.$reference->title, $user, $reference);
-
-        return $reference->refresh();
-    }
-
-    /** Povezivanje jednog dokumenta s više stavki. */
-    public function syncLinkedItems(ProjectDocument|DocumentReference $document, array $itemIds, User $user): void
-    {
-        Gate::authorize('update', $document->project);
-        validator(['item_ids' => $itemIds], ['item_ids' => ['array'], 'item_ids.*' => [$this->projectItemRule($document->project)]])->validate();
-        $document->linkedItems()->sync($itemIds);
-        app(ProjectActivityService::class)->record($document->project, 'document_linked', 'Povezane stavke dokumenta: '.($document->name ?? $document->title), $user, $document);
-    }
-
-    public function deleteFile(ProjectDocument $document, User $user): void
-    {
-        Gate::authorize('update', $document->project);
         DB::transaction(function () use ($document, $user) {
-            if ($document->previousVersions()->exists()) {
-                throw ValidationException::withMessages(['document' => 'Dokument ima zamijenjene verzije; umjesto brisanja koristite arhiviranje.']);
+            $versions = $document->versionHistory()->prepend($document);
+            $this->log($document, $user, 'document.deleted', 'Obrisan dokument: '.$document->name);
+            foreach ($versions as $version) {
+                Storage::disk(ProjectDocument::DISK)->delete($version->path);
             }
-            Storage::disk('local')->delete($document->path);
-            app(ProjectActivityService::class)->record($document->project, 'document_deleted', 'Obrisan dokument: '.$document->name, $user, $document);
-            $document->delete();
+            ProjectDocument::whereKey($versions->modelKeys())->update(['replaced_by_id' => null]);
+            ProjectDocument::whereKey($versions->modelKeys())->delete();
         });
     }
 
-    /** Dozvoljeni su samo http/https linkovi. */
-    private function assertSafeUrl(string $url): void
+    private function log(ProjectDocument $document, User $user, string $event, string $title): void
     {
-        $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
-        if (! in_array($scheme, ['http', 'https'], true) || filter_var($url, FILTER_VALIDATE_URL) === false) {
-            throw ValidationException::withMessages(['url' => 'Dozvoljeni su samo http i https linkovi.']);
+        $subject = $document->documentable instanceof Comment
+            ? $document->documentable->commentable
+            : ($document->documentable ?? $document->project);
+
+        app(ProjectActivityService::class)->record($document->project, $event, $title, $user, $subject, null, ['document_id' => $document->id, 'name' => $document->name]);
+    }
+
+    private function notifyItemResponsible(ProjectDocument $document, string $title): void
+    {
+        $owner = $document->documentable instanceof Comment ? $document->documentable->commentable : $document->documentable;
+        if (! $owner instanceof AdministrativeCaseItem || $owner->responsible === null) {
+            return;
         }
+
+        app(NotificationDispatchService::class)->dispatch([$owner->responsible], NotificationKind::TaskCommented, $title, $owner->url());
     }
 
-    private function assertItemBelongsToProject(Project $project, ?AdministrativeCaseItem $item): void
+    /** Validacijska greška za neuspjelu operaciju nad dokumentom. */
+    public static function fail(string $message, string $field = 'file'): never
     {
-        if ($item !== null && $item->administrativeCase->project_id !== $project->id) {
-            throw ValidationException::withMessages(['administrative_case_item_id' => 'Stavka ne pripada ovom projektu.']);
-        }
-    }
-
-    private function createReference(Project $project, array $validated, string $system, string $externalId): DocumentReference
-    {
-        $case = isset($validated['administrative_case_id']) ? AdministrativeCase::find($validated['administrative_case_id']) : null;
-        $item = isset($validated['administrative_case_item_id']) ? AdministrativeCaseItem::find($validated['administrative_case_item_id']) : null;
-        $this->assertItemBelongsToProject($project, $item);
-
-        return $project->documentReferences()->create([
-            'administrative_case_id' => $case?->id,
-            'administrative_case_item_id' => $item?->id,
-            'external_system' => $system,
-            'external_document_id' => $externalId,
-            'title' => $validated['title'],
-            'url' => $validated['url'] ?? null,
-            'source_app' => $validated['source_app'] ?? null,
-            'document_type' => $validated['document_type'] ?? null,
-            'protocol_number' => $validated['protocol_number'] ?? null,
-            'document_date' => $validated['document_date'] ?? null,
-            'description' => $validated['description'] ?? null,
-            'direction' => $validated['direction'],
-            'sync_status' => DocumentSyncStatus::Pending,
-            'version' => 1,
-        ]);
-    }
-
-    private function syncItems(ProjectDocument|DocumentReference $document, array $itemIds): void
-    {
-        if ($itemIds !== []) {
-            $document->linkedItems()->sync($itemIds);
-        }
-    }
-
-    private function notifyWatchers(Project $project, string $title): void
-    {
-        app(NotificationDispatchService::class)->dispatch(
-            array_filter([$project->responsible, ...$project->members]),
-            NotificationKind::DocumentLinked,
-            $title,
-            route('projects.show', $project),
-        );
-    }
-
-    /** Stavka mora pripadati jednom od postupaka ovog projekta. */
-    private function projectItemRule(Project $project): Exists
-    {
-        return Rule::exists('administrative_case_items', 'id')
-            ->whereIn('administrative_case_id', $project->administrativeCases()->pluck('id')->all());
-    }
-
-    private function fileRules(Project $project): array
-    {
-        return [
-            'file' => ['required', 'file', 'mimes:'.config('projectflow.documents.allowed_mimes'), 'max:'.config('projectflow.documents.max_size')],
-            'name' => ['nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'document_type' => ['nullable', 'string', 'max:100'],
-            'administrative_case_id' => ['nullable', Rule::exists('administrative_cases', 'id')->where('project_id', $project->id)],
-            'administrative_case_item_id' => ['nullable', Rule::exists('administrative_case_items', 'id')],
-            'item_ids' => ['nullable', 'array'],
-            'item_ids.*' => [$this->projectItemRule($project)],
-        ];
-    }
-
-    private function referenceRules(Project $project): array
-    {
-        return [
-            'title' => ['required', 'string', 'max:255'],
-            'url' => ['required', 'string', 'max:2048', 'url'],
-            'source_app' => ['nullable', 'string', 'max:100'],
-            'document_type' => ['nullable', 'string', 'max:100'],
-            'protocol_number' => ['nullable', 'string', 'max:100'],
-            'document_date' => ['nullable', 'date'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'direction' => ['required', Rule::enum(DocumentDirection::class)],
-            'administrative_case_id' => ['nullable', Rule::exists('administrative_cases', 'id')->where('project_id', $project->id)],
-            'administrative_case_item_id' => ['nullable', Rule::exists('administrative_case_items', 'id')],
-            'item_ids' => ['nullable', 'array'],
-            'item_ids.*' => [$this->projectItemRule($project)],
-        ];
+        throw ValidationException::withMessages([$field => $message]);
     }
 }

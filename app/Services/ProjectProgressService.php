@@ -24,7 +24,7 @@ class ProjectProgressService
                 'new_progress' => $progress,
                 'reason' => $reason,
             ]);
-            app(ProjectActivityService::class)->record($project, 'progress_changed', 'Napredak projekta promijenjen', $user, $project, $previous.'% → '.$progress.'% · '.$reason);
+            app(ProjectActivityService::class)->record($project, 'project.progress', 'Promijenjena ručna procjena stanja', $user, $project, $reason, ['field' => 'progress', 'old' => $previous, 'new' => $progress]);
 
             return $project->refresh();
         });

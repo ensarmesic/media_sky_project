@@ -83,6 +83,14 @@ class User extends Authenticatable implements PasskeyUser
         return $this->notificationSetting()->firstOrCreate(['user_id' => $this->id]);
     }
 
+    /** Kratko ime za tabele i liste: "Ensar Mešić" → "Ensar M." */
+    public function shortName(): string
+    {
+        $parts = preg_split('/\s+/u', trim($this->name)) ?: [];
+
+        return count($parts) > 1 ? $parts[0].' '.mb_substr(end($parts), 0, 1).'.' : $this->name;
+    }
+
     /**
      * Get the user's initials
      */

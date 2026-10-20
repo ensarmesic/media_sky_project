@@ -40,6 +40,20 @@ enum CaseItemStatus: string
         };
     }
 
+    /** Klase za status chip (lagana alternativa Flux badge-u u velikim tabelama). */
+    public function chipClass(): string
+    {
+        return 'inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium '.match ($this) {
+            self::NotStarted => 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+            self::InPreparation => 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+            self::Submitted => 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
+            self::WaitingResponse => 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
+            self::SupplementRequired => 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300',
+            self::Completed => 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300',
+            self::Cancelled => 'bg-zinc-100 text-zinc-500 line-through dark:bg-zinc-800 dark:text-zinc-400',
+        };
+    }
+
     /** Tailwind klasa za tačku u boji statusa. */
     public function dotClass(): string
     {

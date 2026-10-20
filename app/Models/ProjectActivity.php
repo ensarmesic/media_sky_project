@@ -29,4 +29,23 @@ class ProjectActivity extends Model
     {
         return $this->morphTo();
     }
+
+    /** Heroicon prema vrsti događaja (za liste aktivnosti). */
+    public function icon(): string
+    {
+        $event = $this->event_type;
+
+        return match (true) {
+            str_contains($event, 'created') => 'plus',
+            str_contains($event, 'submitted') || ($this->metadata['field'] ?? null) === 'submitted_at' => 'arrow-right',
+            str_contains($event, 'response') || ($this->metadata['field'] ?? null) === 'response_at' => 'envelope',
+            str_starts_with($event, 'document') => 'paper-clip',
+            str_starts_with($event, 'comment') => 'chat-bubble-left',
+            str_starts_with($event, 'link') => 'link',
+            str_contains($event, 'status') => 'pencil-square',
+            str_contains($event, 'deleted') || str_contains($event, 'removed') => 'trash',
+            str_starts_with($event, 'project') || str_contains($event, 'progress') || str_contains($event, 'next_step') => 'flag',
+            default => 'clock',
+        };
+    }
 }

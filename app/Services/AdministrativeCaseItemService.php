@@ -109,6 +109,18 @@ class AdministrativeCaseItemService
         });
     }
 
+    /** Drag & drop: stavka se premješta na zadatu poziciju (0 = prva) unutar svog postupka. */
+    public function moveTo(AdministrativeCaseItem $item, int $position): void
+    {
+        DB::transaction(function () use ($item, $position) {
+            $ids = $item->administrativeCase->items()->where('is_active', true)->whereKeyNot($item->id)->pluck('id')->all();
+            array_splice($ids, max(0, min($position, count($ids))), 0, [$item->id]);
+            foreach ($ids as $index => $id) {
+                AdministrativeCaseItem::whereKey($id)->update(['position' => $index + 1]);
+            }
+        });
+    }
+
     /** Pomjeranje zadatka gore/dolje unutar predmeta (uz normalizaciju dupliranih pozicija). */
     public function movePosition(AdministrativeCaseItem $item, string $direction): void
     {

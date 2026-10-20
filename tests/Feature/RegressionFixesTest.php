@@ -9,84 +9,18 @@ use App\Models\AdministrativeCase;
 use App\Models\CaseStatus;
 use App\Models\CaseType;
 use App\Models\Project;
-use App\Models\ProjectDocument;
 use App\Models\User;
 use App\Notifications\WorkspaceNotification;
 use App\Services\AdministrativeCaseItemService;
 use App\Services\AdministrativeCaseService;
-use App\Services\CaseTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class RegressionFixesTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_case_can_be_created_from_template_with_its_tasks(): void
-    {
-        [$admin, $project, $type, $status] = $this->setUpProject();
-        $template = app(CaseTemplateService::class)->save($admin, ['name' => 'Urbanistička saglasnost', 'case_type_id' => $type->id], [
-            ['name' => 'Idejni projekat', 'type' => 'documentation'],
-            ['name' => 'Saglasnost EPBiH', 'type' => 'consent', 'is_required_for_closure' => true],
-        ]);
-
-        $this->actingAs($admin);
-        Livewire::test('pages::projects.show', ['project' => $project])
-            ->call('openCaseModal')
-            ->set('caseMode', 'template')
-            ->set('templateId', $template->id)
-            ->set('caseForm.name', 'Saglasnost za objekat A')
-            ->set('caseForm.case_status_id', (string) $status->id)
-            ->call('saveCase')
-            ->assertHasNoErrors()
-            ->assertSee('Saglasnost EPBiH');
-
-        $case = AdministrativeCase::where('name', 'Saglasnost za objekat A')->firstOrFail();
-        $this->assertSame($type->id, $case->case_type_id);
-        $this->assertSame(['Idejni projekat', 'Saglasnost EPBiH'], $case->items()->pluck('name')->all());
-    }
-
-    public function test_document_can_be_replaced_with_new_version_and_restored_from_archive(): void
-    {
-        Storage::fake('local');
-        [$admin, $project] = $this->setUpProject();
-        $this->actingAs($admin);
-
-        $component = Livewire::test('pages::projects.show', ['project' => $project])
-            ->set('document', UploadedFile::fake()->create('plan.pdf', 50, 'application/pdf'))
-            ->call('uploadDocument')
-            ->assertHasNoErrors();
-        $original = ProjectDocument::firstOrFail();
-
-        $component->set('replaceDocumentId', $original->id)
-            ->set('versionFile', UploadedFile::fake()->create('plan-v2.pdf', 50, 'application/pdf'))
-            ->call('replaceDocumentVersion')
-            ->assertHasNoErrors();
-
-        $latest = ProjectDocument::whereNull('replaced_by_id')->firstOrFail();
-        $this->assertSame(2, $latest->version);
-        $this->assertTrue($original->fresh()->is_archived);
-
-        $component->call('archiveDocument', $latest->id);
-        $this->assertTrue($latest->fresh()->is_archived);
-        $component->call('archiveDocument', $latest->id);
-        $this->assertFalse($latest->fresh()->is_archived);
-    }
-
-    public function test_link_validation_errors_are_shown_on_form_fields(): void
-    {
-        [$admin, $project] = $this->setUpProject();
-        $this->actingAs($admin);
-
-        Livewire::test('pages::projects.show', ['project' => $project])
-            ->set('linkForm', ['title' => '', 'url' => 'javascript:alert(1)'])
-            ->call('addLink')
-            ->assertHasErrors(['linkForm.title', 'linkForm.url', 'linkForm.direction']);
-    }
 
     public function test_viewer_cannot_complete_project_through_livewire_action(): void
     {

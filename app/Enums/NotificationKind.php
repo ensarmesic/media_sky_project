@@ -9,6 +9,7 @@ enum NotificationKind: string
     case WaitingTooLong = 'waiting_too_long';
     case SupplementRequired = 'supplement_required';
     case TaskAssigned = 'task_assigned';
+    case ProjectMember = 'project_member';
     case StatusChanged = 'status_changed';
     case Mentioned = 'mentioned';
     case TaskCommented = 'task_commented';
@@ -21,12 +22,13 @@ enum NotificationKind: string
         return match ($this) {
             self::DeadlineSoon => 'Rok ističe uskoro',
             self::DeadlineOverdue => 'Rok je prekoračen',
-            self::WaitingTooLong => 'Zadatak predugo čeka odgovor',
+            self::WaitingTooLong => 'Stavka predugo čeka odgovor',
             self::SupplementRequired => 'Potrebna je dopuna dokumentacije',
-            self::TaskAssigned => 'Dodijeljen mi je zadatak',
-            self::StatusChanged => 'Promijenjen je status mog zadatka',
+            self::TaskAssigned => 'Dodijeljena mi je stavka',
+            self::ProjectMember => 'Dodavanje u projekat',
+            self::StatusChanged => 'Promijenjen je status moje stavke',
             self::Mentioned => 'Neko me spomenuo u komentaru',
-            self::TaskCommented => 'Novi komentar na mom zadatku',
+            self::TaskCommented => 'Komentar ili dokument na mojoj stavci',
             self::DocumentLinked => 'Povezan je novi dokument',
             self::ResponseReceived => 'Zaprimljen je odgovor institucije',
             self::ProjectCompleted => 'Projekat je označen kao završen',
@@ -37,7 +39,7 @@ enum NotificationKind: string
     {
         return match ($this) {
             self::DeadlineSoon, self::DeadlineOverdue, self::WaitingTooLong => 'clock',
-            self::TaskAssigned => 'user-plus',
+            self::TaskAssigned, self::ProjectMember => 'user-plus',
             self::Mentioned => 'at-symbol',
             self::TaskCommented => 'chat-bubble-left',
             self::StatusChanged => 'arrow-path',

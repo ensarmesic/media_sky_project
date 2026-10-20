@@ -1,21 +1,19 @@
 <?php
 
 use App\Enums\CaseItemStatus;
-use App\Enums\CaseOutcome;
-use App\Enums\DocumentDirection;
+use App\Enums\CaseProgressStatus;
 use App\Enums\ProjectStatus;
 use App\Models\AdministrativeCase;
 use App\Models\AdministrativeCaseItem;
-use App\Models\CaseStatus;
 use App\Models\CaseTemplate;
-use App\Models\CaseType;
 use App\Models\Institution;
 use App\Models\Project;
+use App\Models\ProjectActivity;
 use App\Models\User;
 use App\Services\AdministrativeCaseItemService;
 use App\Services\AdministrativeCaseService;
-use App\Services\DocumentService;
-use App\Services\ProjectActivityService;
+use App\Services\AttentionService;
+use App\Services\ProjectProgressService;
 use App\Services\ProjectWorkflowService;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -27,146 +25,159 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 new #[Title('Projekat')] class extends Component {
-    use WithFileUploads;
-
     public Project $project;
 
-    #[Url(as: 'prikaz', except: 'predmeti')]
-    public string $tab = 'predmeti';
+    /** all | in_progress | waiting_response | completed | not_started */
+    #[Url(as: 'postupci', except: 'all')]
+    public string $caseFilter = 'all';
 
-    /** open | all | overdue | mine */
-    #[Url(except: 'open')]
-    public string $filter = 'open';
+    /** Brzi unos stavke po postupku. */
+    public array $quickItem = [];
 
-    public string $search = '';
-    public bool $showArchived = false;
-    /** @var array<int, bool> */
-    public array $collapsed = [];
-    /** @var array<int, array<string, string>> */
-    public array $newTask = [];
+    // Desna kolona (inline izmjena)
+    public string $currentState = '';
+    public string $nextStep = '';
 
+    // Ručna procjena stanja
+    public bool $showProgressModal = false;
+    public int $manualProgress = 0;
+    public string $progressReason = '';
 
-    // Modal predmeta (novi ili izmjena)
-    public bool $showCaseModal = false;
-    public ?int $editingCaseId = null;
-    public string $caseMode = 'manual';
-    public ?int $templateId = null;
-    public array $caseForm = [];
-
-    // Status projekta
+    // Završavanje projekta
     public bool $showCompleteModal = false;
     public string $completionNote = '';
-    public array $blockersForCompletion = [];
+    public array $blockers = [];
 
-    // Dokumenti
-    public string $docMode = 'upload';
-    public $document;
-    public string $documentName = '';
-    public string $documentType = '';
-    public string $documentCaseId = '';
-    public string $documentDescription = '';
-    public array $linkForm = [];
-    public array $protocolForm = [];
-    public string $documentSearch = '';
-    public bool $showArchivedDocuments = false;
-    public ?int $replaceDocumentId = null;
-    public $versionFile;
-    public ?int $editingReferenceId = null;
-    public array $referenceForm = [];
+    // Postupak (novi ili izmjena)
+    public bool $showCaseModal = false;
+    public ?int $editingCaseId = null;
+    public array $caseForm = ['name' => '', 'institution_id' => '', 'icon' => '', 'template_id' => ''];
+
+    // Članovi
+    public bool $showMembersModal = false;
+    public string $newMemberId = '';
+    public string $newMemberRole = Project::ROLE_MEMBER;
+
+    public const ICONS = ['document-text' => 'Dokument', 'clipboard-document-list' => 'Lista', 'bolt' => 'Struja', 'map' => 'Cesta / trasa', 'map-pin' => 'Lokacija / katastar', 'building-office' => 'Institucija', 'wrench-screwdriver' => 'Radovi', 'shield-check' => 'Saglasnost'];
 
     public function mount(Project $project): void
     {
         Gate::authorize('view', $project);
         $this->project = $project;
-        $this->refreshProject();
-
+        $this->syncSideCards();
     }
 
-    // ---------------------------------------------------------------- Prikaz
+    // -------------------------------------------------------------- Podaci
 
-    /** Predmeti projekta, filtrirani po arhivi i pretrazi (po nazivu predmeta ili zadatka). */
+    /** Aktivni postupci sa stavkama (bez N+1: stavke, odgovorne osobe, institucije i broj dokumenata). */
     #[Computed]
     public function cases(): Collection
     {
-        $search = mb_strtolower(trim($this->search));
-
-        return $this->project->administrativeCases
-            ->filter(fn (AdministrativeCase $case) => (bool) $case->is_archived === $this->showArchived)
-            ->filter(fn (AdministrativeCase $case) => $search === ''
-                || str_contains(mb_strtolower($case->name), $search)
-                || $case->items->contains(fn (AdministrativeCaseItem $item) => str_contains(mb_strtolower($item->name), $search)))
-            ->filter(fn (AdministrativeCase $case) => in_array($this->filter, ['open', 'all'], true) || $this->visibleItems($case)->isNotEmpty())
-            ->values();
-    }
-
-    /** Zadaci predmeta prema odabranom filteru. */
-    public function visibleItems(AdministrativeCase $case): Collection
-    {
-        $search = mb_strtolower(trim($this->search));
-        $caseMatches = $search === '' || str_contains(mb_strtolower($case->name), $search);
-
-        return $case->items
-            ->filter(fn (AdministrativeCaseItem $item) => $caseMatches || str_contains(mb_strtolower($item->name), $search))
-            ->filter(fn (AdministrativeCaseItem $item) => match ($this->filter) {
-                'open' => $item->isOpen(),
-                'overdue' => $item->isOverdue(),
-                'mine' => $item->responsible_user_id === auth()->id() && $item->isOpen(),
-                default => true,
-            })
-            ->values();
-    }
-
-    /** @return array{total: int, done: int, overdue: int, mine: int} */
-    #[Computed]
-    public function stats(): array
-    {
-        $items = $this->project->administrativeCases
+        $cases = $this->project->administrativeCases()
             ->where('is_archived', false)
-            ->flatMap->items
-            ->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::Cancelled);
+            ->with([
+                'institution:id,name',
+                'items' => fn ($query) => $query->where('is_active', true)->with(['responsible:id,name', 'institution:id,name'])->withCount('documents'),
+            ])
+            ->get();
+        $cases->each(fn (AdministrativeCase $case) => $case->setRelation('project', $this->project)
+            ->items->each->setRelation('administrativeCase', $case));
 
-        return [
-            'total' => $items->count(),
-            'done' => $items->where('status', CaseItemStatus::Completed)->count(),
-            'overdue' => $items->filter->isOverdue()->count(),
-            'mine' => $items->filter(fn (AdministrativeCaseItem $item) => $item->responsible_user_id === auth()->id() && $item->isOpen())->count(),
-        ];
+        return $cases;
     }
 
-    /** Osvježavanje nakon izmjene u detalju zadatka (drawer). */
+    /** Posljednja aktivnost po postupku (uključujući aktivnosti na njegovim stavkama) — jedan upit. */
+    #[Computed]
+    public function lastActivityByCase(): Collection
+    {
+        $itemToCase = $this->cases->flatMap(fn (AdministrativeCase $case) => $case->items->mapWithKeys(fn (AdministrativeCaseItem $item) => [$item->id => $case->id]));
+
+        return ProjectActivity::query()
+            ->where('project_id', $this->project->id)
+            ->whereIn('subject_type', [(new AdministrativeCase)->getMorphClass(), (new AdministrativeCaseItem)->getMorphClass()])
+            ->latest()->latest('id')->limit(500)
+            ->get(['id', 'subject_type', 'subject_id', 'title', 'created_at'])
+            ->groupBy(fn (ProjectActivity $activity) => $activity->subject_type === (new AdministrativeCase)->getMorphClass() ? $activity->subject_id : ($itemToCase[$activity->subject_id] ?? 0))
+            ->map->first();
+    }
+
+    #[Computed]
+    public function statusCounts(): Collection
+    {
+        return $this->cases->countBy(fn (AdministrativeCase $case) => $case->progressStatus()->value);
+    }
+
+    #[Computed]
+    public function visibleCases(): Collection
+    {
+        return $this->caseFilter === 'all'
+            ? $this->cases
+            : $this->cases->filter(fn (AdministrativeCase $case) => $case->progressStatus()->value === $this->caseFilter)->values();
+    }
+
+    #[Computed]
+    public function attention(): Collection
+    {
+        return app(AttentionService::class)->forProject($this->project->id);
+    }
+
+    #[Computed]
+    public function recentActivities(): Collection
+    {
+        return $this->project->activities()->with('user:id,name')->latest()->latest('id')->limit(5)->get();
+    }
+
+    #[Computed]
+    public function recentDocuments(): Collection
+    {
+        return $this->project->documents()->whereNull('replaced_by_id')->where('is_archived', false)->latest()->latest('id')->limit(4)->get();
+    }
+
+    #[Computed]
+    public function members(): Collection
+    {
+        return $this->project->members()->orderByRaw("case when project_user.role = 'manager' then 0 else 1 end")->orderBy('name')->get();
+    }
+
+    #[Computed]
+    public function progress(): ?int
+    {
+        return $this->project->setRelation('administrativeCases', $this->cases)->administrativeProgress();
+    }
+
+    #[Computed]
+    public function canUpdate(): bool
+    {
+        return auth()->user()->can('update', $this->project);
+    }
+
+    /** Osvježavanje kada se stavka promijeni u bočnom panelu. */
     #[On('task-updated')]
-    public function refreshAfterTaskChange(): void
+    public function refresh(): void
     {
-        $this->refreshProject();
+        $this->project->refresh();
+        unset($this->cases, $this->lastActivityByCase, $this->statusCounts, $this->visibleCases, $this->attention, $this->recentActivities, $this->recentDocuments, $this->progress);
     }
 
-    public function toggleCase(int $caseId): void
-    {
-        $this->collapsed[$caseId] = ! ($this->collapsed[$caseId] ?? false);
-    }
+    // ------------------------------------------------------- Zaglavlje projekta
 
-    // ------------------------------------------------------- Status projekta
-
-    public function changeProjectStatus(string $newStatus, ProjectWorkflowService $service): void
+    public function changeStatus(string $status, ProjectWorkflowService $service): void
     {
         Gate::authorize('update', $this->project);
-        validator(['status' => $newStatus], ['status' => ['required', Rule::enum(ProjectStatus::class)]])->validate();
+        validator(['status' => $status], ['status' => ['required', Rule::enum(ProjectStatus::class)]])->validate();
 
-        if ($newStatus === ProjectStatus::Completed->value) {
+        if ($status === ProjectStatus::Completed->value) {
+            $this->blockers = $service->unfinishedRequiredItems($this->project)->map(fn (AdministrativeCaseItem $item) => $item->name.' ('.$item->administrativeCase->name.')')->all();
             $this->completionNote = '';
-            $this->resetValidation();
-            $this->blockersForCompletion = $service->unfinishedRequiredItems($this->project)
-                ->map(fn (AdministrativeCaseItem $item) => $item->name.' ('.$item->administrativeCase->name.')')->all();
             $this->showCompleteModal = true;
 
             return;
         }
 
-        $service->changeStatus($this->project, auth()->user(), ProjectStatus::from($newStatus));
-        $this->refreshProject();
+        $service->changeStatus($this->project, auth()->user(), ProjectStatus::from($status));
+        $this->refresh();
         Flux::toast('Status projekta: '.$this->project->status->label(), variant: 'success');
     }
 
@@ -174,252 +185,214 @@ new #[Title('Projekat')] class extends Component {
     {
         Gate::authorize('update', $this->project);
         $this->validate(['completionNote' => ['nullable', 'string', 'max:2000']]);
-        $service->changeStatus($this->project, auth()->user(), ProjectStatus::Completed, $this->completionNote ?: null);
-        $this->reset('showCompleteModal', 'completionNote', 'blockersForCompletion');
-        $this->refreshProject();
+        try {
+            $service->changeStatus($this->project, auth()->user(), ProjectStatus::Completed, $this->completionNote ?: null);
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages(['completionNote' => $exception->errors()['completion_note'] ?? $exception->getMessage()]);
+        }
+        $this->reset('showCompleteModal', 'completionNote', 'blockers');
+        $this->refresh();
         Flux::toast('Projekat je označen kao završen.', variant: 'success');
     }
 
-    // --------------------------------------------------------------- Predmeti
+    public function openProgressModal(): void
+    {
+        Gate::authorize('update', $this->project);
+        $this->manualProgress = (int) $this->project->progress;
+        $this->progressReason = '';
+        $this->showProgressModal = true;
+    }
+
+    public function saveProgress(ProjectProgressService $service): void
+    {
+        Gate::authorize('update', $this->project);
+        $this->validate(['manualProgress' => ['required', 'integer', 'between:0,100'], 'progressReason' => ['nullable', 'string', 'max:500']]);
+        $service->setManualProgress($this->project, auth()->user(), $this->manualProgress, $this->progressReason ?: 'Ručna procjena stanja');
+        $this->showProgressModal = false;
+        $this->refresh();
+        Flux::toast('Ručna procjena je sačuvana.', variant: 'success');
+    }
+
+    public function updatedCurrentState(): void
+    {
+        $this->saveSideCard('currentState', fn () => app(ProjectWorkflowService::class)->setCurrentState($this->project, auth()->user(), $this->currentState));
+    }
+
+    public function updatedNextStep(): void
+    {
+        $this->saveSideCard('nextStep', fn () => app(ProjectWorkflowService::class)->setNextStep($this->project, auth()->user(), $this->nextStep));
+    }
+
+    // ----------------------------------------------------------------- Postupci
 
     public function openCaseModal(?int $caseId = null): void
     {
         $this->resetValidation();
         $this->editingCaseId = $caseId;
-        $this->caseMode = 'manual';
-        $this->templateId = null;
-
         if ($caseId !== null) {
             $case = $this->findCase($caseId);
             Gate::authorize('update', $case);
-            $this->caseForm = [
-                'name' => $case->name, 'description' => $case->description ?? '',
-                'case_type_id' => (string) $case->case_type_id, 'institution_id' => (string) ($case->institution_id ?? ''),
-                'responsible_user_id' => (string) $case->responsible_user_id, 'case_status_id' => (string) $case->case_status_id,
-                'started_at' => $case->started_at->format('Y-m-d'), 'response_due_at' => $case->response_due_at?->format('Y-m-d') ?? '',
-                'reminder_days_before' => (string) ($case->reminder_days_before ?? ''),
-            ];
+            $this->caseForm = ['name' => $case->name, 'institution_id' => (string) ($case->institution_id ?? ''), 'icon' => $case->icon ?? '', 'template_id' => ''];
         } else {
             Gate::authorize('create', AdministrativeCase::class);
             Gate::authorize('update', $this->project);
-            $this->caseForm = [
-                'name' => '', 'description' => '', 'case_type_id' => '', 'institution_id' => '',
-                'responsible_user_id' => (string) auth()->id(),
-                'case_status_id' => (string) (CaseStatus::where('is_active', true)->orderBy('position')->value('id') ?? ''),
-                'started_at' => now()->toDateString(), 'response_due_at' => '', 'reminder_days_before' => '3',
-            ];
+            $this->caseForm = ['name' => '', 'institution_id' => '', 'icon' => 'document-text', 'template_id' => ''];
         }
-
         $this->showCaseModal = true;
     }
 
     public function saveCase(AdministrativeCaseService $service): void
     {
-        $fromTemplate = $this->editingCaseId === null && $this->caseMode === 'template';
         $data = $this->validate([
             'caseForm.name' => ['required', 'string', 'max:255'],
-            'caseForm.description' => ['nullable', 'string', 'max:5000'],
-            'caseForm.case_type_id' => [$fromTemplate ? 'nullable' : 'required', 'exists:case_types,id'],
             'caseForm.institution_id' => ['nullable', 'exists:institutions,id'],
-            'caseForm.responsible_user_id' => ['required', 'exists:users,id'],
-            'caseForm.case_status_id' => ['required', 'exists:case_statuses,id'],
-            'caseForm.started_at' => ['required', 'date'],
-            'caseForm.response_due_at' => ['nullable', 'date', 'after_or_equal:caseForm.started_at'],
-            'caseForm.reminder_days_before' => ['nullable', 'integer', 'between:0,365'],
-            'templateId' => [$fromTemplate ? 'required' : 'nullable', 'exists:case_templates,id'],
-        ])['caseForm'];
-        $data = array_map(fn ($value) => $value === '' ? null : $value, $data);
+            'caseForm.icon' => ['nullable', Rule::in(array_keys(self::ICONS))],
+            'caseForm.template_id' => ['nullable', 'exists:case_templates,id'],
+        ], attributes: ['caseForm.name' => 'naziv postupka'])['caseForm'];
+        $payload = ['name' => trim($data['name']), 'institution_id' => $data['institution_id'] ?: null, 'icon' => $data['icon'] ?: null];
 
         if ($this->editingCaseId !== null) {
             $case = $this->findCase($this->editingCaseId);
             Gate::authorize('update', $case);
-            $this->withErrorPrefix('caseForm.', fn () => $service->update($case, $data, auth()->user()));
-            $message = 'Predmet je sačuvan.';
+            $service->update($case, $payload, auth()->user());
+            $message = 'Postupak je sačuvan.';
         } else {
             Gate::authorize('create', AdministrativeCase::class);
             Gate::authorize('update', $this->project);
-            $payload = [...$data, 'project_id' => $this->project->id];
-            $case = $fromTemplate
-                ? $this->withErrorPrefix('caseForm.', fn () => $service->createFromTemplate($this->project, [...$payload, 'case_template_id' => $this->templateId], auth()->user()))
+            $payload['project_id'] = $this->project->id;
+            $case = filled($data['template_id'])
+                ? $service->createFromTemplate($this->project, [...$payload, 'case_template_id' => $data['template_id']], auth()->user())
                 : $service->create($payload, auth()->user());
-            $this->collapsed[$case->id] = false;
-            $message = 'Predmet je kreiran.';
+            $this->dispatch('case-created', id: $case->id);
+            $message = 'Postupak je dodan.';
         }
 
-        $this->reset('showCaseModal', 'editingCaseId', 'caseForm', 'templateId', 'caseMode');
-        $this->refreshProject();
+        $this->reset('showCaseModal', 'editingCaseId', 'caseForm');
+        $this->refresh();
         Flux::toast($message, variant: 'success');
-    }
-
-    public function duplicateCase(int $caseId, AdministrativeCaseService $service): void
-    {
-        $case = $this->findCase($caseId);
-        Gate::authorize('create', AdministrativeCase::class);
-        Gate::authorize('update', $case);
-        $service->duplicate($case, auth()->user());
-        $this->refreshProject();
-        Flux::toast('Predmet je dupliran sa svim zadacima.', variant: 'success');
-    }
-
-    public function moveCase(int $caseId, string $direction, AdministrativeCaseService $service): void
-    {
-        $case = $this->findCase($caseId);
-        Gate::authorize('update', $case);
-        $service->movePosition($case, $direction === 'up' ? 'up' : 'down');
-        $this->refreshProject();
     }
 
     public function archiveCase(int $caseId, AdministrativeCaseService $service): void
     {
         $case = $this->findCase($caseId);
         Gate::authorize('update', $case);
-        $service->setArchived($case, auth()->user(), ! $case->is_archived);
-        $this->refreshProject();
-        Flux::toast($case->is_archived ? 'Predmet je vraćen iz arhive.' : 'Predmet je arhiviran.', variant: 'success');
+        $service->setArchived($case, auth()->user(), true);
+        $this->refresh();
+        Flux::toast('Postupak je arhiviran.');
     }
 
-    // ---------------------------------------------------------------- Zadaci
+    /** Drag & drop postupaka. */
+    public function sortCases(int|string $caseId, int $position, AdministrativeCaseService $service): void
+    {
+        $case = $this->findCase((int) $caseId);
+        Gate::authorize('update', $case);
+        $service->moveTo($case, $position);
+        $this->refresh();
+    }
 
-    public function addTask(int $caseId, AdministrativeCaseItemService $service): void
+    // ------------------------------------------------------------------- Stavke
+
+    public function addItem(int $caseId, AdministrativeCaseItemService $service): void
     {
         $case = $this->findCase($caseId);
         Gate::authorize('update', $case);
-        $data = $this->validate([
-            "newTask.$caseId.name" => ['required', 'string', 'max:255'],
-            "newTask.$caseId.responsible_user_id" => ['nullable', 'exists:users,id'],
-            "newTask.$caseId.due_date" => ['nullable', 'date'],
-        ], attributes: ["newTask.$caseId.name" => 'naziv zadatka'])['newTask'][$caseId];
-
-        $service->create($case, [
-            'name' => trim($data['name']),
-            'responsible_user_id' => $data['responsible_user_id'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
-        ], auth()->user());
-
-        $this->newTask[$caseId] = ['name' => '', 'responsible_user_id' => $data['responsible_user_id'] ?? '', 'due_date' => ''];
-        $this->refreshProject();
+        $this->validate(["quickItem.$caseId" => ['required', 'string', 'max:255']], attributes: ["quickItem.$caseId" => 'naziv stavke']);
+        $service->create($case, ['name' => trim($this->quickItem[$caseId])], auth()->user());
+        $this->quickItem[$caseId] = '';
+        $this->refresh();
     }
 
-    /** Brzo označavanje zadatka završenim / ponovno otvaranje. */
-    public function toggleComplete(int $itemId, AdministrativeCaseItemService $service): void
-    {
-        $item = $this->findItem($itemId);
-        Gate::authorize('update', $item);
-        $service->changeStatus($item, $item->status === CaseItemStatus::Completed ? CaseItemStatus::InPreparation : CaseItemStatus::Completed, auth()->user());
-        $this->refreshProject();
-    }
-
+    /** Promjena statusa direktno iz chipa u tabeli. */
     public function changeItemStatus(int $itemId, string $status, AdministrativeCaseItemService $service): void
     {
         $item = $this->findItem($itemId);
         Gate::authorize('update', $item);
         validator(['status' => $status], ['status' => ['required', Rule::enum(CaseItemStatus::class)]])->validate();
         $service->changeStatus($item, CaseItemStatus::from($status), auth()->user());
-        $this->refreshProject();
+        $this->refresh();
     }
 
-    // ------------------------------------------------------------- Dokumenti
-
-    public function uploadDocument(DocumentService $service): void
+    public function duplicateItem(int $itemId, AdministrativeCaseItemService $service): void
     {
-        $this->validate([
-            'document' => ['required', 'file', 'mimes:'.config('projectflow.documents.allowed_mimes'), 'max:'.config('projectflow.documents.max_size')],
-            'documentName' => ['nullable', 'string', 'max:255'],
-            'documentType' => ['nullable', 'string', 'max:100'],
-            'documentCaseId' => ['nullable', Rule::exists('administrative_cases', 'id')->where('project_id', $this->project->id)],
-            'documentDescription' => ['nullable', 'string', 'max:1000'],
-        ]);
-        $service->storeFile($this->project, auth()->user(), $this->document, [
-            'name' => $this->documentName,
-            'description' => $this->documentDescription,
-            'document_type' => $this->documentType,
-            'administrative_case_id' => $this->documentCaseId ?: null,
-        ]);
-        $this->reset('document', 'documentName', 'documentType', 'documentCaseId', 'documentDescription');
-        $this->refreshProject();
-        Flux::toast('Dokument je dodan.', variant: 'success');
+        $item = $this->findItem($itemId);
+        Gate::authorize('update', $item->administrativeCase);
+        $service->duplicate($item, auth()->user());
+        $this->refresh();
+        Flux::toast('Stavka je duplicirana.', variant: 'success');
     }
 
-    public function addLink(DocumentService $service): void
+    public function deleteItem(int $itemId, AdministrativeCaseItemService $service): void
     {
-        $this->withErrorPrefix('linkForm.', fn () => $service->storeExternalLink($this->project, auth()->user(), $this->nullIfEmpty($this->linkForm)));
-        $this->reset('linkForm');
-        $this->refreshProject();
-        Flux::toast('Link je evidentiran.', variant: 'success');
+        $item = $this->findItem($itemId);
+        Gate::authorize('update', $item->administrativeCase);
+        $service->deactivate($item, auth()->user());
+        $this->refresh();
+        Flux::toast('Stavka je obrisana.');
     }
 
-    public function addProtocol(DocumentService $service): void
+    /** Drag & drop stavki unutar postupka. */
+    public function sortItems(int|string $itemId, int $position, AdministrativeCaseItemService $service): void
     {
-        $this->withErrorPrefix('protocolForm.', fn () => $service->storeProtocolReference($this->project, auth()->user(), $this->nullIfEmpty($this->protocolForm)));
-        $this->reset('protocolForm');
-        $this->refreshProject();
-        Flux::toast('Dokument iz protokola je evidentiran.', variant: 'success');
+        $item = $this->findItem((int) $itemId);
+        Gate::authorize('update', $item->administrativeCase);
+        $service->moveTo($item, $position);
+        $this->refresh();
     }
 
-    public function replaceDocumentVersion(DocumentService $service): void
+    // ------------------------------------------------------------------ Članovi
+
+    public function addMember(ProjectWorkflowService $service): void
     {
-        $document = $this->project->documents()->findOrFail($this->replaceDocumentId);
-        $this->validate(['versionFile' => ['required', 'file']]);
-        $this->withErrorPrefix('', fn () => $service->replaceFileVersion($document, auth()->user(), $this->versionFile), ['file' => 'versionFile']);
-        $this->reset('replaceDocumentId', 'versionFile');
-        $this->refreshProject();
-        Flux::toast('Dokument je zamijenjen novom verzijom.', variant: 'success');
+        Gate::authorize('update', $this->project);
+        $this->validate(['newMemberId' => ['required', 'exists:users,id'], 'newMemberRole' => ['required', Rule::in([Project::ROLE_MANAGER, Project::ROLE_MEMBER])]], attributes: ['newMemberId' => 'korisnik']);
+        $service->addMember($this->project, auth()->user(), User::findOrFail($this->newMemberId), $this->newMemberRole);
+        $this->reset('newMemberId', 'newMemberRole');
+        unset($this->members);
+        Flux::toast('Član je dodan.', variant: 'success');
     }
 
-    public function archiveDocument(int $id, DocumentService $service): void
+    public function changeMemberRole(int $userId, string $role, ProjectWorkflowService $service): void
     {
-        $document = $this->project->documents()->findOrFail($id);
-        $service->archiveDocument($document, auth()->user(), ! $document->is_archived);
-        $this->refreshProject();
+        Gate::authorize('update', $this->project);
+        abort_unless($this->project->members()->whereKey($userId)->exists(), 404);
+        $service->addMember($this->project, auth()->user(), User::findOrFail($userId), $role);
+        unset($this->members);
     }
 
-    public function deleteDocument(int $id, DocumentService $service): void
+    public function removeMember(int $userId, ProjectWorkflowService $service): void
     {
-        $service->deleteFile($this->project->documents()->findOrFail($id), auth()->user());
-        $this->refreshProject();
-        Flux::toast('Dokument je obrisan.');
+        Gate::authorize('update', $this->project);
+        $service->removeMember($this->project, auth()->user(), User::findOrFail($userId));
+        unset($this->members);
+        Flux::toast('Član je uklonjen.');
     }
 
-    public function archiveReference(int $id, DocumentService $service): void
-    {
-        $reference = $this->project->documentReferences()->findOrFail($id);
-        $service->archiveReference($reference, auth()->user(), ! $reference->is_archived);
-        $this->refreshProject();
-    }
-
-    public function editReference(int $id): void
-    {
-        $reference = $this->project->documentReferences()->findOrFail($id);
-        $this->resetValidation();
-        $this->editingReferenceId = $id;
-        $this->referenceForm = [
-            'title' => $reference->title, 'url' => $reference->url ?? '',
-            'source_app' => $reference->source_app ?? '', 'document_type' => $reference->document_type ?? '',
-            'protocol_number' => $reference->protocol_number ?? '', 'document_date' => $reference->document_date?->format('Y-m-d') ?? '',
-            'description' => $reference->description ?? '', 'direction' => $reference->direction->value,
-        ];
-    }
-
-    public function saveReference(DocumentService $service): void
-    {
-        $reference = $this->project->documentReferences()->findOrFail($this->editingReferenceId);
-        $this->withErrorPrefix('referenceForm.', fn () => $service->updateReference($reference, auth()->user(), $this->nullIfEmpty($this->referenceForm)));
-        $this->reset('editingReferenceId', 'referenceForm');
-        $this->refreshProject();
-        Flux::toast('Dokument je sačuvan.', variant: 'success');
-    }
-
-    // -------------------------------------------------------------- Pomoćno
+    // ------------------------------------------------------------------ Pomoćno
 
     public function with(): array
     {
         return [
-            'users' => User::orderBy('name')->get(['id', 'name']),
-            'institutions' => Institution::orderBy('name')->get(['id', 'name']),
-            'caseTypes' => CaseType::where('is_active', true)->orderBy('name')->get(),
-            'caseStatuses' => CaseStatus::where('is_active', true)->orderBy('position')->get(),
-            'templates' => $this->showCaseModal ? CaseTemplate::where('is_active', true)->withCount('items')->orderBy('name')->get() : collect(),
+            'institutions' => $this->showCaseModal ? Institution::orderBy('name')->get(['id', 'name']) : collect(),
+            'templates' => $this->showCaseModal && $this->editingCaseId === null ? CaseTemplate::where('is_active', true)->withCount('items')->orderBy('name')->get() : collect(),
+            'icons' => self::ICONS,
+            'availableUsers' => $this->showMembersModal ? User::whereNotIn('id', $this->members->pluck('id'))->orderBy('name')->get(['id', 'name']) : collect(),
         ];
+    }
+
+    private function saveSideCard(string $property, callable $save): void
+    {
+        Gate::authorize('update', $this->project);
+        $this->validate([$property => ['nullable', 'string', 'max:500']]);
+        $save();
+        $this->refresh();
+        unset($this->recentActivities);
+        Flux::toast('Sačuvano', variant: 'success', duration: 1500);
+    }
+
+    private function syncSideCards(): void
+    {
+        $this->currentState = $this->project->current_state ?? '';
+        $this->nextStep = $this->project->next_step ?? '';
     }
 
     private function findCase(int $caseId): AdministrativeCase
@@ -427,466 +400,435 @@ new #[Title('Projekat')] class extends Component {
         return $this->project->administrativeCases()->findOrFail($caseId);
     }
 
-    private function findItem(?int $itemId): AdministrativeCaseItem
+    private function findItem(int $itemId): AdministrativeCaseItem
     {
-        $item = AdministrativeCaseItem::with(['administrativeCase.project', 'responsible'])->findOrFail($itemId);
-        abort_unless($item->administrativeCase->project_id === $this->project->id && $item->is_active, 404);
+        $item = AdministrativeCaseItem::with('administrativeCase.project')->where('is_active', true)->findOrFail($itemId);
+        abort_unless($item->administrativeCase->project_id === $this->project->id, 404);
 
         return $item;
     }
+}; ?>
 
-    /**
-     * Servisi validiraju s "golim" ključevima (npr. title); preimenujemo ih u
-     * ključeve Livewire polja da bi se greška prikazala ispod pravog inputa.
-     *
-     * @param  array<string, string>  $map
-     */
-    private function withErrorPrefix(string $prefix, callable $callback, array $map = []): mixed
-    {
-        try {
-            return $callback();
-        } catch (ValidationException $exception) {
-            throw ValidationException::withMessages(collect($exception->errors())
-                ->mapWithKeys(fn (array $errors, string $key) => [($map[$key] ?? $prefix.str_replace('newCase.', '', $key)) => $errors])
-                ->all());
-        }
-    }
+@php($canUpdate = $this->canUpdate)
+@php($canEditCases = $canUpdate && auth()->user()->can('create', App\Models\AdministrativeCase::class))
+@php($warningDays = (int) config('projectflow.attention.warning_days', 3))
+@php($itemsWord = fn (int $count) => $count % 10 === 1 && $count % 100 !== 11 ? 'stavka' : (in_array($count % 10, [2, 3, 4], true) && ! in_array($count % 100, [12, 13, 14], true) ? 'stavke' : 'stavki'))
 
-    /** @param  array<string, mixed>  $data */
-    private function nullIfEmpty(array $data): array
-    {
-        return array_map(fn ($value) => $value === '' ? null : $value, $data);
-    }
-
-    private function refreshProject(): void
-    {
-        $this->project = $this->project->fresh()->load([
-            'category', 'responsible',
-            'administrativeCases.status', 'administrativeCases.institution', 'administrativeCases.responsible',
-            'administrativeCases.items' => fn ($query) => $query->where('is_active', true),
-            'administrativeCases.items.responsible', 'administrativeCases.items.institution',
-            'administrativeCases.items.documentReferences', 'administrativeCases.items.linkedDocumentReferences',
-            'documents' => fn ($query) => $query->latest(),
-            'documents.uploader', 'documents.administrativeCase', 'documents.previousVersions',
-            'documentReferences' => fn ($query) => $query->latest(),
-            'documentReferences.administrativeCase',
-            'activities' => fn ($query) => $query->latest()->latest('id')->limit(50),
-            'activities.user',
-        ]);
-        unset($this->cases, $this->stats);
-    }
-};
-?>
-
-@php($canUpdateProject = auth()->user()->can('update', $project))
-@php($canCreateCase = $canUpdateProject && auth()->user()->can('create', App\Models\AdministrativeCase::class))
-@php($progress = $this->stats['total'] > 0 ? (int) round($this->stats['done'] / $this->stats['total'] * 100) : null)
-
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-5">
-    <flux:breadcrumbs>
-        <flux:breadcrumbs.item :href="route('projects.index')" wire:navigate>Projekti</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    {{-- ZAGLAVLJE PROJEKTA --}}
-    <header class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-3">
-                    <flux:heading size="xl">{{ $project->name }}</flux:heading>
-                    <flux:badge :color="$project->status->color()" size="sm">{{ $project->status->label() }}</flux:badge>
-                </div>
-                <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-zinc-500">
-                    <span>{{ $project->code }}</span>
-                    <span>· {{ $project->category->name }}</span>
-                    @if($project->location)<span>· {{ $project->location }}</span>@endif
-                    <span>· {{ $project->responsible->name }}</span>
-                    @if($project->planned_end_date)<span>· završetak {{ $project->planned_end_date->format('d.m.Y.') }}</span>@endif
-                </div>
-            </div>
-            <div class="flex shrink-0 items-center gap-2">
-                @if($canUpdateProject)
-                    <select wire:change="changeProjectStatus($event.target.value)" wire:key="project-status-{{ $project->status->value }}-{{ (int) $showCompleteModal }}" aria-label="Status projekta" class="rounded-lg border-zinc-200 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800">
-                        @foreach(ProjectStatus::cases() as $statusOption)
-                            <option value="{{ $statusOption->value }}" @selected($project->status === $statusOption)>{{ $statusOption->label() }}</option>
-                        @endforeach
-                    </select>
-                @endif
-                <flux:dropdown align="end">
-                    <flux:button size="sm" icon="ellipsis-horizontal" aria-label="Više opcija" />
-                    <flux:menu>
-                        @if($canUpdateProject)<flux:menu.item icon="pencil-square" :href="route('projects.edit', $project)" wire:navigate>Uredi projekat</flux:menu.item>@endif
-                        <flux:menu.item icon="arrow-down-tray" :href="route('projects.report.pdf', $project)">Izvještaj (PDF)</flux:menu.item>
-                    </flux:menu>
-                </flux:dropdown>
-            </div>
-        </div>
-
-        <div class="mt-4 flex items-center gap-3">
-            <div class="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div class="h-full rounded-full bg-blue-600 transition-all" style="width: {{ $progress ?? 0 }}%"></div></div>
-            <span class="shrink-0 text-sm text-zinc-500">
-                @if($progress === null) Nema zadataka @else <strong class="text-zinc-900 dark:text-white">{{ $this->stats['done'] }}/{{ $this->stats['total'] }}</strong> zadataka završeno @endif
-                @if($this->stats['overdue'] > 0) · <span class="font-medium text-red-600">{{ $this->stats['overdue'] }} kasni</span>@endif
-            </span>
-        </div>
-    </header>
-
-    {{-- TABOVI --}}
-    <nav class="flex gap-1 border-b border-zinc-200 dark:border-zinc-800" aria-label="Sadržaj projekta">
-        @foreach([
-            'predmeti' => 'Predmeti i zadaci ('.$project->administrativeCases->where('is_archived', false)->count().')',
-            'dokumenti' => 'Dokumenti ('.($project->documents->where('is_archived', false)->count() + $project->documentReferences->where('is_archived', false)->count()).')',
-            'istorija' => 'Istorija',
-        ] as $tabKey => $tabLabel)
-            <button type="button" wire:click="$set('tab', '{{ $tabKey }}')" @class([
-                '-mb-px border-b-2 px-3 py-2 text-sm',
-                'border-blue-600 font-medium text-zinc-900 dark:text-white' => $tab === $tabKey,
-                'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200' => $tab !== $tabKey,
-            ])>{{ $tabLabel }}</button>
-        @endforeach
-    </nav>
-
-    {{-- ===================================================== PREDMETI I ZADACI --}}
-    @if($tab === 'predmeti')
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-wrap gap-1">
-                @foreach(['open' => 'Otvoreni', 'overdue' => 'Kasne ('.$this->stats['overdue'].')', 'mine' => 'Moji ('.$this->stats['mine'].')', 'all' => 'Svi'] as $filterKey => $filterLabel)
-                    <button type="button" wire:click="$set('filter', '{{ $filterKey }}')" @class([
-                        'rounded-lg px-3 py-1.5 text-sm',
-                        'bg-zinc-900 font-medium text-white dark:bg-white dark:text-zinc-900' => $filter === $filterKey,
-                        'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => $filter !== $filterKey,
-                    ])>{{ $filterLabel }}</button>
-                @endforeach
-            </div>
-            <div class="flex items-center gap-2">
-                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Pretraži…" size="sm" class="sm:max-w-52" />
-                @if($canCreateCase)
-                    <flux:button size="sm" variant="primary" icon="plus" wire:click="openCaseModal">Novi predmet</flux:button>
-                @endif
-            </div>
-        </div>
-
-        <div class="flex flex-col gap-3">
-            @forelse($this->cases as $case)
-                @php($items = $this->visibleItems($case))
-                @php($caseItems = $case->items->reject(fn ($item) => $item->status === CaseItemStatus::Cancelled))
-                @php($isCollapsed = $collapsed[$case->id] ?? false)
-                @php($canEditCase = auth()->user()->can('update', $case))
-                <section id="predmet-{{ $case->id }}" wire:key="case-{{ $case->id }}" class="scroll-mt-4 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-                    {{-- Zaglavlje predmeta --}}
-                    <div class="flex items-start gap-3 p-4">
-                        <button type="button" wire:click="toggleCase({{ $case->id }})" class="mt-0.5 text-zinc-400 hover:text-zinc-700" aria-label="{{ $isCollapsed ? 'Prikaži zadatke' : 'Sakrij zadatke' }}">
-                            <flux:icon :name="$isCollapsed ? 'chevron-right' : 'chevron-down'" class="size-5" />
-                        </button>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button type="button" wire:click="toggleCase({{ $case->id }})" class="text-left font-semibold">{{ $case->name }}</button>
-                                <flux:badge :color="$case->status->color" size="sm">{{ $case->status->name }}</flux:badge>
-                            </div>
-                            <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
-                                <span>{{ $caseItems->where('status', CaseItemStatus::Completed)->count() }}/{{ $caseItems->count() }} zadataka</span>
-                                @if($case->institution)<span>· {{ $case->institution->name }}</span>@endif
-                                <span>· {{ $case->responsible->name }}</span>
-                                @if($case->response_due_at)
-                                    <span @class(['font-medium text-red-600' => $case->closed_at === null && $case->response_due_at->isPast()])>· rok odgovora {{ $case->response_due_at->format('d.m.Y.') }}</span>
-                                @endif
-                            </div>
-                        </div>
-                        @if($canEditCase)
-                            <flux:dropdown align="end">
-                                <flux:button size="xs" variant="ghost" icon="ellipsis-horizontal" aria-label="Opcije predmeta" />
-                                <flux:menu>
-                                    <flux:menu.item icon="pencil-square" wire:click="openCaseModal({{ $case->id }})">Uredi predmet</flux:menu.item>
-                                    <flux:menu.item icon="arrow-up" wire:click="moveCase({{ $case->id }}, 'up')">Pomjeri gore</flux:menu.item>
-                                    <flux:menu.item icon="arrow-down" wire:click="moveCase({{ $case->id }}, 'down')">Pomjeri dolje</flux:menu.item>
-                                    @can('create', App\Models\AdministrativeCase::class)
-                                        <flux:menu.item icon="document-duplicate" wire:click="duplicateCase({{ $case->id }})" wire:confirm="Kopirati predmet sa svim zadacima?">Dupliraj</flux:menu.item>
-                                    @endcan
-                                    <flux:menu.separator />
-                                    @if($case->is_archived)
-                                        <flux:menu.item icon="archive-box-arrow-down" wire:click="archiveCase({{ $case->id }})">Vrati iz arhive</flux:menu.item>
-                                    @else
-                                        <flux:menu.item icon="archive-box" wire:click="archiveCase({{ $case->id }})" wire:confirm="Arhivirati predmet? Podaci i istorija ostaju sačuvani.">Arhiviraj</flux:menu.item>
-                                    @endif
-                                </flux:menu>
-                            </flux:dropdown>
+<div class="mx-auto w-full max-w-[1400px]">
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        {{-- ============================================================ GLAVNI DIO --}}
+        <div class="min-w-0 space-y-5">
+            {{-- Zaglavlje --}}
+            <header class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0">
+                    <flux:breadcrumbs>
+                        <flux:breadcrumbs.item :href="route('projects.index')" wire:navigate>Projekti</flux:breadcrumbs.item>
+                        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
+                    </flux:breadcrumbs>
+                    <div class="mt-3 flex items-center gap-3">
+                        <h1 class="text-3xl font-bold tracking-tight">{{ $project->name }}</h1>
+                        @if($canUpdate)
+                            <a href="{{ route('projects.edit', $project) }}" wire:navigate class="rounded-lg border border-zinc-200 p-1.5 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-800" aria-label="Uredi projekat" title="Uredi projekat"><flux:icon.pencil variant="mini" class="size-4" /></a>
                         @endif
                     </div>
+                    @if($project->description)<p class="mt-1 text-sm text-zinc-500">{{ $project->description }}</p>@endif
+                    <div class="mt-3 flex flex-wrap gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        @if($project->location)<span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 dark:border-zinc-700 dark:bg-zinc-900"><flux:icon.map-pin variant="mini" class="size-4 text-zinc-400" />{{ $project->location }}</span>@endif
+                        @if($project->category)<span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 dark:border-zinc-700 dark:bg-zinc-900"><flux:icon.cog-6-tooth variant="mini" class="size-4 text-zinc-400" />{{ $project->category->name }}</span>@endif
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 dark:border-zinc-700 dark:bg-zinc-900"><flux:icon.calendar variant="mini" class="size-4 text-zinc-400" />{{ $project->start_date->format('d.m.Y.') }} – {{ $project->planned_end_date?->format('d.m.Y.') ?? 'bez roka' }}</span>
+                    </div>
+                </div>
 
-                    {{-- Zadaci predmeta --}}
-                    @unless($isCollapsed)
-                        <div class="border-t border-zinc-100 dark:border-zinc-800">
-                            @forelse($items as $item)
-                                {{-- Isto pravilo kao AdministrativeCaseItemPolicy, bez dodatnog upita po redu --}}
-                                @php($canEditItem = $canEditCase || ($item->responsible_user_id === auth()->id() && auth()->user()->role !== App\Enums\UserRole::Viewer))
-                                @php($isDone = $item->status === CaseItemStatus::Completed)
-                                <div wire:key="item-{{ $item->id }}" @class(['group flex items-center gap-3 border-b border-zinc-100 px-4 py-2.5 last:border-0 dark:border-zinc-800', 'bg-blue-50/60 dark:bg-blue-950/20' => false])>
-                                    <button type="button" @if($canEditItem) wire:click="toggleComplete({{ $item->id }})" @else disabled @endif
-                                        @class(['flex size-5 shrink-0 items-center justify-center rounded-full border-2', 'border-emerald-500 bg-emerald-500 text-white' => $isDone, 'border-zinc-300 hover:border-emerald-500 dark:border-zinc-600' => ! $isDone])
-                                        title="{{ $isDone ? 'Ponovo otvori' : 'Označi završenim' }}">
-                                        @if($isDone)<flux:icon.check variant="micro" class="size-3.5" />@endif
-                                    </button>
-                                    <button type="button" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="min-w-0 flex-1 text-left">
-                                        <div @class(['truncate text-sm', 'text-zinc-400 line-through' => $isDone, 'font-medium' => ! $isDone])>{{ $item->name }}</div>
-                                        <div class="mt-0.5 flex flex-wrap gap-x-2 text-xs text-zinc-500">
-                                            <span>{{ $item->responsible?->name ?? 'Nije dodijeljeno' }}</span>
-                                            @if($item->due_date)
-                                                <span @class(['font-medium text-red-600' => $item->isOverdue(), 'text-amber-600' => ! $item->isOverdue() && $item->isDueSoon()])>· rok {{ $item->due_date->format('d.m.Y.') }}</span>
-                                            @endif
-                                            @if($item->documentReferences->isNotEmpty() || $item->linkedDocumentReferences->isNotEmpty())<span>· 📎 {{ $item->documentReferences->merge($item->linkedDocumentReferences)->unique('id')->count() }}</span>@endif
-                                        </div>
-                                    </button>
-                                    @if($canEditItem)
-                                        <select wire:change="changeItemStatus({{ $item->id }}, $event.target.value)" wire:key="item-status-{{ $item->id }}-{{ $item->status->value }}" aria-label="Status zadatka" class="hidden rounded-md border-zinc-200 py-1 text-xs sm:block dark:border-zinc-700 dark:bg-zinc-800">
-                                            @foreach(CaseItemStatus::cases() as $statusOption)<option value="{{ $statusOption->value }}" @selected($item->status === $statusOption)>{{ $statusOption->label() }}</option>@endforeach
-                                        </select>
+                <div class="grid shrink-0 gap-4 sm:grid-cols-[11rem_16rem]">
+                    <div>
+                        <div class="mb-1 text-xs text-zinc-500">Status projekta</div>
+                        @if($canUpdate)
+                            <select wire:change="changeStatus($event.target.value)" wire:key="status-{{ $project->status->value }}-{{ (int) $showCompleteModal }}" aria-label="Status projekta"
+                                class="w-full rounded-lg border-blue-200 bg-blue-50 py-2 text-sm font-medium text-blue-700 focus:border-blue-500 focus:ring-blue-500 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                                @foreach(ProjectStatus::selectable() as $option)<option value="{{ $option->value }}" @selected($project->status->label() === $option->label())>{{ $option->label() }}</option>@endforeach
+                            </select>
+                        @else
+                            <flux:badge :color="$project->status->color()">{{ $project->status->label() }}</flux:badge>
+                        @endif
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="mb-1 flex items-center justify-between text-xs text-zinc-500"><span>Administrativni napredak</span><strong class="text-sm text-zinc-900 dark:text-white">{{ $this->progress === null ? '–' : $this->progress.'%' }}</strong></div>
+                            <div class="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800" role="progressbar" aria-label="Administrativni napredak" aria-valuenow="{{ $this->progress ?? 0 }}" aria-valuemin="0" aria-valuemax="100"><div class="h-full rounded-full bg-blue-600" style="width: {{ $this->progress ?? 0 }}%"></div></div>
+                        </div>
+                        <button type="button" @if($canUpdate) wire:click="openProgressModal" @else disabled @endif class="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded" title="{{ $canUpdate ? 'Klik za promjenu ručne procjene' : '' }}">
+                            <div class="mb-1 flex items-center justify-between text-xs text-zinc-500"><span>Ručna procjena stanja</span><strong class="text-sm text-zinc-500">{{ $project->progress }}%</strong></div>
+                            <div class="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div class="h-full rounded-full bg-blue-300 dark:bg-blue-700" style="width: {{ $project->progress }}%"></div></div>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {{-- Postupci u projektu --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
+                x-data="{ open: $persist([]).as('projectflow-open-cases-{{ $project->id }}'), toggle(id) { this.open = this.open.includes(id) ? this.open.filter(i => i !== id) : [...this.open, id] } }"
+                x-on:case-created.window="open = [...open, $event.detail.id]">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <flux:icon.clipboard-document-check class="size-6 text-blue-600" />
+                        <h2 class="text-lg font-semibold">Postupci u projektu</h2>
+                    </div>
+                    @if($canEditCases)
+                        <flux:button variant="primary" icon="plus" wire:click="openCaseModal">Dodaj postupak</flux:button>
+                    @endif
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Filter postupaka">
+                    @foreach(['all' => 'Svi', CaseProgressStatus::InProgress->value => 'U toku', CaseProgressStatus::WaitingResponse->value => 'Čeka odgovor', CaseProgressStatus::Completed->value => 'Završeno', CaseProgressStatus::NotStarted->value => 'Nije pokrenuto'] as $key => $label)
+                        @php($count = $key === 'all' ? $this->cases->count() : $this->statusCounts->get($key, 0))
+                        <button type="button" role="tab" aria-selected="{{ $caseFilter === $key ? 'true' : 'false' }}" wire:click="$set('caseFilter', '{{ $key }}')" @class([
+                            'rounded-lg border px-3 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                            'border-blue-200 bg-blue-50 font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300' => $caseFilter === $key,
+                            'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800' => $caseFilter !== $key,
+                        ])>{{ $label }} ({{ $count }})</button>
+                    @endforeach
+                </div>
+
+                <div class="mt-4 space-y-3" @if($canEditCases && $caseFilter === 'all') wire:sort="sortCases" @endif>
+                    @forelse($this->visibleCases as $case)
+                        @php($counts = $case->itemCounts())
+                        @php($caseStatus = $case->progressStatus())
+                        @php($lastActivity = $this->lastActivityByCase->get($case->id))
+                        @php($canEditCase = $canEditCases)
+                        <article id="predmet-{{ $case->id }}" wire:key="case-{{ $case->id }}" @if($canEditCases && $caseFilter === 'all') wire:sort:item="{{ $case->id }}" @endif class="scroll-mt-20 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                            <div class="flex flex-wrap items-center gap-4 p-4 lg:flex-nowrap">
+                                @if($canEditCases && $caseFilter === 'all')<span wire:sort:handle class="hidden cursor-grab text-zinc-300 hover:text-zinc-500 sm:block" title="Prevuci za promjenu redoslijeda"><flux:icon.bars-2 variant="mini" class="size-4" /></span>@endif
+                                <button type="button" x-on:click="toggle({{ $case->id }})" class="flex min-w-0 flex-1 items-center gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg" :aria-expanded="open.includes({{ $case->id }}).toString()">
+                                    <span class="flex size-11 shrink-0 items-center justify-center rounded-xl {{ $caseStatus->iconClass() }}"><flux:icon :name="$case->icon ?: 'document-text'" class="size-6" /></span>
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-semibold">{{ $case->name }}</span>
+                                        <span class="block truncate text-sm text-zinc-500">{{ $case->institution?->name ?? 'Bez institucije' }}</span>
+                                    </span>
+                                </button>
+                                <div class="w-40 shrink-0">
+                                    <div class="text-sm"><strong>{{ $counts['done'] }} / {{ $counts['total'] }}</strong> {{ $itemsWord($counts['total']) }}</div>
+                                    <div class="mt-1.5 flex items-center gap-2">
+                                        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div class="h-full rounded-full bg-blue-600" style="width: {{ $counts['percent'] }}%"></div></div>
+                                        <span class="w-9 text-right text-xs text-zinc-500">{{ $counts['percent'] }}%</span>
+                                    </div>
+                                </div>
+                                <div class="w-28 shrink-0"><flux:badge :color="$caseStatus->color()" size="sm">{{ $caseStatus->label() }}</flux:badge></div>
+                                <div class="hidden w-48 shrink-0 border-l border-zinc-100 pl-4 text-xs text-zinc-500 md:block dark:border-zinc-800">
+                                    <div>Posljednja aktivnost</div>
+                                    @if($lastActivity)
+                                        <div class="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{{ $lastActivity->created_at->format('d.m.Y.') }}</div>
+                                        <div class="truncate" title="{{ $lastActivity->title }}">{{ $lastActivity->title }}</div>
                                     @else
-                                        <flux:badge :color="$item->status->color()" size="sm">{{ $item->status->label() }}</flux:badge>
+                                        <div class="mt-0.5">–</div>
                                     @endif
                                 </div>
-                            @empty
-                                <div class="px-4 py-5 text-center text-sm text-zinc-500">
-                                    {{ $case->items->isEmpty() ? 'Predmet još nema zadataka.' : 'Nema zadataka za odabrani filter.' }}
+                                <div class="flex shrink-0 items-center gap-1">
+                                    @if($canEditCase)
+                                        <flux:dropdown align="end">
+                                            <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" aria-label="Opcije postupka" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="pencil-square" wire:click="openCaseModal({{ $case->id }})">Uredi postupak</flux:menu.item>
+                                                <flux:menu.item icon="archive-box" wire:click="archiveCase({{ $case->id }})" wire:confirm="Arhivirati postupak? Stavke i istorija ostaju sačuvane.">Arhiviraj</flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @endif
+                                    <button type="button" x-on:click="toggle({{ $case->id }})" class="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" :aria-label="open.includes({{ $case->id }}) ? 'Zatvori postupak' : 'Otvori postupak'">
+                                        <flux:icon.chevron-down variant="mini" class="size-5 transition" x-bind:class="open.includes({{ $case->id }}) && 'rotate-180'" />
+                                    </button>
                                 </div>
-                            @endforelse
+                            </div>
 
-                            @if($canEditCase && ! $case->is_archived)
-                                <form wire:submit="addTask({{ $case->id }})" class="flex flex-col gap-2 border-t border-zinc-100 bg-zinc-50/60 p-3 sm:flex-row sm:items-start dark:border-zinc-800 dark:bg-zinc-950/30">
-                                    <div class="flex-1">
-                                        <flux:input wire:model="newTask.{{ $case->id }}.name" size="sm" placeholder="+ Novi zadatak (npr. Saglasnost EPBiH)" />
-                                        <flux:error name="newTask.{{ $case->id }}.name" />
-                                    </div>
-                                    <flux:select wire:model="newTask.{{ $case->id }}.responsible_user_id" size="sm" class="sm:max-w-44" aria-label="Odgovorna osoba">
-                                        <option value="">Odgovorna osoba</option>
-                                        @foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach
-                                    </flux:select>
-                                    <flux:input wire:model="newTask.{{ $case->id }}.due_date" type="date" size="sm" class="sm:max-w-40" aria-label="Rok" />
-                                    <flux:button type="submit" size="sm">Dodaj</flux:button>
-                                </form>
+                            {{-- Tabela stavki --}}
+                            <div x-show="open.includes({{ $case->id }})" x-cloak class="border-t border-zinc-100 dark:border-zinc-800">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full min-w-[900px] text-sm">
+                                        <thead>
+                                            <tr class="text-left text-xs text-zinc-500">
+                                                <th class="w-10 px-3 py-2.5 font-medium">#</th>
+                                                <th class="px-3 py-2.5 font-medium">Stavka</th>
+                                                <th class="px-3 py-2.5 font-medium">Status</th>
+                                                <th class="px-3 py-2.5 font-medium">Institucija / primalac</th>
+                                                <th class="px-3 py-2.5 font-medium">Rok</th>
+                                                <th class="px-3 py-2.5 font-medium">Predaja</th>
+                                                <th class="px-3 py-2.5 font-medium">Odgovor</th>
+                                                <th class="px-3 py-2.5 font-medium">Dokumenti</th>
+                                                <th class="px-3 py-2.5 font-medium">Odgovorna osoba</th>
+                                                <th class="w-14 px-3 py-2.5 text-right font-medium">Akcije</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800" @if($canEditCase) wire:sort="sortItems" @endif>
+                                            @forelse($case->items as $item)
+                                                @php($canEditItem = $canEditCase || ($item->responsible_user_id === auth()->id() && auth()->user()->role !== App\Enums\UserRole::Viewer))
+                                                @php($daysLeft = $item->daysUntilDue())
+                                                <tr wire:key="item-{{ $item->id }}" @if($canEditCase) wire:sort:item="{{ $item->id }}" @endif class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40">
+                                                    <td class="px-3 py-2.5 text-zinc-500">
+                                                        @if($canEditCase)<span wire:sort:handle class="cursor-grab" title="Prevuci za promjenu redoslijeda">{{ $loop->iteration }}</span>@else{{ $loop->iteration }}@endif
+                                                    </td>
+                                                    <td class="max-w-64 px-3 py-2.5">
+                                                        <a href="{{ $item->url() }}" x-on:click="if (! $event.metaKey && ! $event.ctrlKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $dispatch('open-task', { id: {{ $item->id }} }) }" @class(['block truncate font-medium hover:text-blue-600', 'text-zinc-400 line-through' => $item->status === CaseItemStatus::Cancelled])>{{ $item->name }}</a>
+                                                    </td>
+                                                    <td class="px-3 py-2.5">
+                                                        <x-item-status-menu :item="$item" :editable="$canEditItem" />
+                                                    </td>
+                                                    <td class="px-3 py-2.5 text-zinc-600 dark:text-zinc-300">{{ $item->recipientName() ?? '–' }}</td>
+                                                    <td @class(['px-3 py-2.5 tabular-nums', 'font-semibold text-red-600 dark:text-red-400' => $item->isOverdue(), 'font-medium text-orange-600 dark:text-orange-400' => ! $item->isOverdue() && $item->isOpen() && $daysLeft !== null && $daysLeft <= $warningDays, 'text-zinc-600 dark:text-zinc-300' => ! $item->isOverdue() && ($daysLeft === null || $daysLeft > $warningDays || ! $item->isOpen())])>{{ $item->due_date?->format('d.m.Y.') ?? '–' }}</td>
+                                                    <td class="px-3 py-2.5 tabular-nums text-zinc-600 dark:text-zinc-300">{{ $item->submitted_at?->format('d.m.Y.') ?? '–' }}</td>
+                                                    <td class="px-3 py-2.5 tabular-nums text-zinc-600 dark:text-zinc-300">{{ $item->response_at?->format('d.m.Y.') ?? '–' }}</td>
+                                                    <td class="px-3 py-2.5">
+                                                        <button type="button" x-on:click="$dispatch('open-task', { id: {{ $item->id }}, section: 'dokumenti' })" @class(['inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs', 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300' => $item->documents_count > 0, 'border-zinc-200 text-zinc-400 dark:border-zinc-700' => $item->documents_count === 0]) aria-label="Dokumenti stavke ({{ $item->documents_count }})">
+                                                            <svg viewBox="0 0 16 16" fill="currentColor" class="size-3.5" aria-hidden="true"><path d="M4 2a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 4 14h8a1.5 1.5 0 0 0 1.5-1.5V6.62a1.5 1.5 0 0 0-.44-1.06L9.94 2.44A1.5 1.5 0 0 0 8.88 2H4Z"/></svg>{{ $item->documents_count }}
+                                                        </button>
+                                                    </td>
+                                                    <td class="px-3 py-2.5">
+                                                        @if($item->responsible)
+                                                            <span class="flex items-center gap-2 whitespace-nowrap"><span class="pf-avatar" aria-hidden="true">{{ $item->responsible->initials() }}</span>{{ $item->responsible->shortName() }}</span>
+                                                        @else
+                                                            <span class="text-zinc-400">–</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-3 py-2.5 text-right">
+                                                        <div x-data="{ open: false }" class="relative inline-block text-left" x-on:keydown.escape="open = false">
+                                                            <button type="button" x-on:click="open = ! open" class="pf-icon-button text-lg leading-none" aria-haspopup="true" :aria-expanded="open.toString()" aria-label="Akcije za stavku {{ $item->name }}">⋯</button>
+                                                            <div x-show="open" x-cloak x-on:click.outside="open = false" x-on:click="open = false" class="pf-menu right-0" role="menu">
+                                                                <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item">{{ $canEditItem ? 'Uredi' : 'Otvori' }}</button>
+                                                                @if($canEditItem)
+                                                                    <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item">Promijeni status</button>
+                                                                    <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }}, section: 'dokumenti' })" class="pf-menu-item">Dodaj dokument</button>
+                                                                @endif
+                                                                @if($canEditCase)
+                                                                    <button type="button" role="menuitem" wire:click="duplicateItem({{ $item->id }})" class="pf-menu-item">Dupliciraj</button>
+                                                                    <button type="button" role="menuitem" wire:click="deleteItem({{ $item->id }})" wire:confirm="Obrisati stavku? Istorija i dokumenti ostaju sačuvani." class="pf-menu-item text-red-600">Obriši</button>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr><td colspan="10" class="px-3 py-6 text-center text-sm text-zinc-500">Postupak još nema stavki.</td></tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                                @if($canEditCase)
+                                    <form wire:submit="addItem({{ $case->id }})" class="flex items-center gap-2 border-t border-zinc-100 px-3 py-2 dark:border-zinc-800">
+                                        <flux:icon.plus variant="mini" class="size-4 text-zinc-400" />
+                                        <input type="text" wire:model="quickItem.{{ $case->id }}" placeholder="Dodaj stavku (naziv, pa Enter)" aria-label="Naziv nove stavke u postupku {{ $case->name }}"
+                                            class="flex-1 border-0 bg-transparent px-1 py-1 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-0" />
+                                        <flux:error name="quickItem.{{ $case->id }}" />
+                                    </form>
+                                @endif
+                            </div>
+                        </article>
+                    @empty
+                        <div class="rounded-xl border border-dashed border-zinc-300 px-6 py-12 text-center dark:border-zinc-700">
+                            <flux:heading>{{ $caseFilter === 'all' ? 'Projekat još nema postupaka' : 'Nema postupaka s ovim statusom' }}</flux:heading>
+                            <flux:text class="mt-1">Postupak je npr. "Urbanistička saglasnost" prema Općini; stavke su koraci koje treba završiti.</flux:text>
+                            @if($canEditCases && $caseFilter === 'all')<flux:button class="mt-4" variant="primary" icon="plus" wire:click="openCaseModal">Dodaj postupak</flux:button>@endif
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+        </div>
+
+        {{-- ============================================================ DESNA KOLONA --}}
+        <aside class="space-y-5" aria-label="Pregled projekta">
+            {{-- Trenutno stanje i sljedeći korak --}}
+            <section class="space-y-3 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                @foreach([['currentState', 'Trenutno stanje', 'clock', 'bg-amber-50 text-amber-500 dark:bg-amber-950/40', 'Npr. čeka se odgovor EPBiH…'], ['nextStep', 'Sljedeći korak', 'arrow-right', 'bg-blue-50 text-blue-600 dark:bg-blue-950/40', 'Npr. pripremiti dopunu za Vodovod…']] as [$field, $label, $icon, $iconClass, $placeholder])
+                    <div x-data="{ editing: false }" class="flex gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                        <span class="flex size-9 shrink-0 items-center justify-center rounded-full {{ $iconClass }}"><flux:icon :name="$icon" class="size-5" /></span>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm font-semibold">{{ $label }}</div>
+                            <div x-show="! editing" @if($canUpdate) x-on:click="editing = true; $nextTick(() => $refs.input.focus())" class="cursor-text rounded text-sm text-zinc-600 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-800" title="Klik za izmjenu" @else class="text-sm text-zinc-600 dark:text-zinc-300" @endif>
+                                {{ $this->{$field} !== '' ? $this->{$field} : ($canUpdate ? 'Klik za unos…' : '–') }}
+                            </div>
+                            @if($canUpdate)
+                                <textarea x-show="editing" x-cloak x-ref="input" wire:model.blur="{{ $field }}" x-on:blur="editing = false" x-on:keydown.enter.prevent="$el.blur()" rows="2" placeholder="{{ $placeholder }}" aria-label="{{ $label }}"
+                                    class="mt-1 w-full rounded-md border border-zinc-200 bg-white p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-zinc-700 dark:bg-zinc-900"></textarea>
+                                <flux:error :name="$field" />
                             @endif
                         </div>
-                    @endunless
-                </section>
-            @empty
-                <div class="rounded-xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
-                    <flux:heading>{{ $search !== '' || $filter !== 'open' ? 'Ništa ne odgovara filteru' : ($showArchived ? 'Nema arhiviranih predmeta' : 'Projekat još nema predmeta') }}</flux:heading>
-                    <flux:text class="mt-1">Predmet je npr. "Urbanistička saglasnost" ili "Građevinska dozvola", a zadaci su koraci koje treba riješiti u okviru njega.</flux:text>
-                    @if($canCreateCase && ! $showArchived)
-                        <flux:button class="mt-4" variant="primary" icon="plus" wire:click="openCaseModal">Dodaj prvi predmet</flux:button>
-                    @endif
-                </div>
-            @endforelse
-        </div>
-
-        <div class="text-center">
-            <button type="button" wire:click="$toggle('showArchived')" class="text-sm text-zinc-500 hover:text-blue-600">{{ $showArchived ? '← Nazad na aktivne predmete' : 'Prikaži arhivirane predmete' }}</button>
-        </div>
-    @endif
-
-    {{-- ============================================================ DOKUMENTI --}}
-    @if($tab === 'dokumenti')
-        @if($canUpdateProject)
-            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <flux:heading>Dodaj dokument</flux:heading>
-                    <div class="flex gap-1">
-                        @foreach(['upload' => 'Datoteka', 'link' => 'Vanjski link', 'protocol' => 'Iz protokola'] as $modeKey => $modeLabel)
-                            <flux:button size="sm" :variant="$docMode === $modeKey ? 'primary' : 'ghost'" wire:click="$set('docMode', '{{ $modeKey }}')">{{ $modeLabel }}</flux:button>
-                        @endforeach
                     </div>
-                </div>
-                @php($caseOptions = $project->administrativeCases->where('is_archived', false))
-                @if($docMode === 'upload')
-                    <form wire:submit="uploadDocument" class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="document" type="file" label="Datoteka ({{ config('projectflow.documents.allowed_labels') }}, max {{ number_format(config('projectflow.documents.max_size') / 1024, 0) }} MB)" />
-                        <flux:input wire:model="documentName" label="Naziv (opciono)" />
-                        <flux:input wire:model="documentType" label="Vrsta dokumenta" placeholder="npr. Saglasnost, Rješenje" />
-                        <flux:select wire:model="documentCaseId" label="Predmet"><option value="">Cijeli projekat</option>@foreach($caseOptions as $caseOption)<option value="{{ $caseOption->id }}">{{ $caseOption->name }}</option>@endforeach</flux:select>
-                        <flux:textarea wire:model="documentDescription" label="Napomena" rows="2" class="sm:col-span-2" />
-                        <div class="sm:col-span-2"><flux:button type="submit" variant="primary" size="sm">Dodaj dokument</flux:button></div>
-                    </form>
-                @elseif($docMode === 'link')
-                    <form wire:submit="addLink" class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="linkForm.title" label="Naziv dokumenta" />
-                        <flux:input wire:model="linkForm.url" label="URL (http/https)" />
-                        <flux:select wire:model="linkForm.direction" label="Smjer"><option value="">Odaberite</option>@foreach(DocumentDirection::cases() as $direction)<option value="{{ $direction->value }}">{{ $direction->label() }}</option>@endforeach</flux:select>
-                        <flux:select wire:model="linkForm.administrative_case_id" label="Predmet"><option value="">Cijeli projekat</option>@foreach($caseOptions as $caseOption)<option value="{{ $caseOption->id }}">{{ $caseOption->name }}</option>@endforeach</flux:select>
-                        <flux:input wire:model="linkForm.protocol_number" label="Broj protokola (opciono)" />
-                        <flux:input wire:model="linkForm.document_date" type="date" label="Datum dokumenta" />
-                        <div class="sm:col-span-2"><flux:button type="submit" variant="primary" size="sm">Dodaj link</flux:button></div>
-                    </form>
-                @else
-                    <form wire:submit="addProtocol" class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="protocolForm.title" label="Naziv dokumenta" />
-                        <flux:input wire:model="protocolForm.external_document_id" label="ID dokumenta u protokolu" />
-                        <flux:input wire:model="protocolForm.protocol_number" label="Broj protokola" />
-                        <flux:input wire:model="protocolForm.document_date" type="date" label="Datum dokumenta" />
-                        <flux:select wire:model="protocolForm.direction" label="Smjer"><option value="">Odaberite</option>@foreach(DocumentDirection::cases() as $direction)<option value="{{ $direction->value }}">{{ $direction->label() }}</option>@endforeach</flux:select>
-                        <flux:select wire:model="protocolForm.administrative_case_id" label="Predmet"><option value="">Cijeli projekat</option>@foreach($caseOptions as $caseOption)<option value="{{ $caseOption->id }}">{{ $caseOption->name }}</option>@endforeach</flux:select>
-                        <div class="sm:col-span-2"><flux:button type="submit" variant="primary" size="sm">Poveži s protokolom</flux:button></div>
-                    </form>
-                @endif
+                @endforeach
             </section>
-        @endif
 
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:input wire:model.live.debounce.300ms="documentSearch" icon="magnifying-glass" placeholder="Pretraži dokumente…" size="sm" class="max-w-64" />
-            <button type="button" wire:click="$toggle('showArchivedDocuments')" class="text-sm text-zinc-500 hover:text-blue-600">{{ $showArchivedDocuments ? '← Aktivni dokumenti' : 'Prikaži arhivirane' }}</button>
-        </div>
+            {{-- Zahtijeva pažnju --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="flex items-center justify-between">
+                    <h2 class="flex items-center gap-2 font-semibold"><flux:icon.exclamation-triangle class="size-5 text-red-500" />Zahtijeva pažnju</h2>
+                    @if($this->attention->isNotEmpty())<span class="flex size-6 items-center justify-center rounded-full bg-red-500 text-xs font-semibold text-white">{{ $this->attention->count() }}</span>@endif
+                </div>
+                <ul class="mt-3 space-y-2">
+                    @forelse($this->attention as $entry)
+                        <li wire:key="attention-{{ $entry['item']->id }}">
+                            <button type="button" x-on:click="$dispatch('open-task', { id: {{ $entry['item']->id }} })" @class(['flex w-full gap-3 rounded-lg border-l-4 bg-zinc-50 p-2.5 text-left hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-zinc-800/50 dark:hover:bg-zinc-800', 'border-red-500' => $entry['type'] === 'overdue', 'border-orange-400' => $entry['type'] !== 'overdue'])>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-sm font-semibold">{{ $entry['item']->name }}</span>
+                                    <span @class(['block text-xs', 'text-red-600 dark:text-red-400' => $entry['type'] === 'overdue', 'text-zinc-500' => $entry['type'] !== 'overdue'])>{{ $entry['reason'] }}</span>
+                                </span>
+                                <span class="shrink-0 text-xs text-zinc-500">{{ $entry['date']?->format('d.m.Y.') }}</span>
+                            </button>
+                        </li>
+                    @empty
+                        <li class="text-sm text-zinc-500">Sve je pod kontrolom — nema stavki koje kasne ili dugo čekaju.</li>
+                    @endforelse
+                </ul>
+            </section>
 
-        @php($needle = mb_strtolower(trim($documentSearch)))
-        @php($files = $project->documents->where('is_archived', $showArchivedDocuments)->filter(fn ($doc) => $needle === '' || str_contains(mb_strtolower($doc->name.' '.$doc->document_type), $needle)))
-        @php($references = $project->documentReferences->where('is_archived', $showArchivedDocuments)->filter(fn ($doc) => $needle === '' || str_contains(mb_strtolower($doc->title.' '.$doc->protocol_number.' '.$doc->external_document_id), $needle)))
+            {{-- Posljednje aktivnosti --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="flex items-center justify-between">
+                    <h2 class="flex items-center gap-2 font-semibold"><flux:icon.clock class="size-5 text-zinc-500" />Posljednje aktivnosti</h2>
+                    <a href="{{ route('projects.history', $project) }}" wire:navigate class="text-sm font-medium text-blue-600 hover:underline">Sve</a>
+                </div>
+                <ul class="mt-3 space-y-3">
+                    @forelse($this->recentActivities as $activity)
+                        <li class="flex gap-3 text-sm" wire:key="recent-{{ $activity->id }}">
+                            <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"><flux:icon :name="$activity->icon()" variant="micro" class="size-4" /></span>
+                            <span class="min-w-0 flex-1 truncate" title="{{ $activity->title }}">{{ $activity->title }}</span>
+                            <span class="shrink-0 text-right text-xs text-zinc-500">{{ $activity->created_at->format('d.m.Y.') }}<br>{{ $activity->user?->shortName() }}</span>
+                        </li>
+                    @empty
+                        <li class="text-sm text-zinc-500">Još nema aktivnosti.</li>
+                    @endforelse
+                </ul>
+            </section>
 
-        <section class="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-            @foreach($files as $doc)
-                <div class="flex flex-col gap-2 p-4 sm:flex-row sm:items-center" wire:key="doc-{{ $doc->id }}">
-                    <flux:icon.document class="hidden size-5 shrink-0 text-zinc-400 sm:block" />
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('projects.documents.download', [$project, $doc]) }}" class="text-sm font-medium hover:text-blue-600">{{ $doc->name }}</a>
-                            @if($doc->version > 1)<flux:badge color="zinc" size="sm">v{{ $doc->version }}</flux:badge>@endif
-                            @if($doc->document_type)<flux:badge color="blue" size="sm">{{ $doc->document_type }}</flux:badge>@endif
+            {{-- Dokumenti projekta --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="flex items-center justify-between">
+                    <h2 class="flex items-center gap-2 font-semibold"><flux:icon.document-text class="size-5 text-zinc-500" />Dokumenti projekta</h2>
+                    <a href="{{ route('projects.documents', $project) }}" wire:navigate class="text-sm font-medium text-blue-600 hover:underline">Sve</a>
+                </div>
+                <ul class="mt-3 space-y-3">
+                    @forelse($this->recentDocuments as $document)
+                        <li class="flex items-center gap-3" wire:key="recent-doc-{{ $document->id }}">
+                            <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $document->iconClass() }}"><flux:icon :name="$document->icon()" variant="mini" class="size-4" /></span>
+                            <div class="min-w-0 flex-1">
+                                <a href="{{ route('documents.show', $document) }}" target="_blank" rel="noopener" class="block truncate text-sm font-medium hover:text-blue-600">{{ $document->name }}</a>
+                                <div class="truncate text-xs text-zinc-500">{{ ($document->document_date ?? $document->created_at)->format('d.m.Y.') }}{{ $document->directionLabel() ? ' · '.$document->directionLabel() : '' }} · {{ $document->protocol_number ? 'Br. '.$document->protocol_number : 'Verzija '.$document->version }}</div>
+                            </div>
+                            <flux:dropdown align="end">
+                                <flux:button size="xs" variant="ghost" icon="ellipsis-horizontal" aria-label="Opcije dokumenta" />
+                                <flux:menu>
+                                    <flux:menu.item icon="eye" :href="route('documents.show', $document)" target="_blank">Otvori</flux:menu.item>
+                                    <flux:menu.item icon="arrow-down-tray" :href="route('documents.download', $document)">Preuzmi</flux:menu.item>
+                                </flux:menu>
+                            </flux:dropdown>
+                        </li>
+                    @empty
+                        <li class="text-sm text-zinc-500">Još nema dokumenata.</li>
+                    @endforelse
+                </ul>
+            </section>
+
+            {{-- Članovi projekta --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-semibold">Članovi projekta</h2>
+                    @if($canUpdate)<button type="button" wire:click="$set('showMembersModal', true)" class="text-sm font-medium text-blue-600 hover:underline">Uredi</button>@endif
+                </div>
+                <div class="mt-3 flex flex-wrap items-start gap-4">
+                    @foreach($this->members as $member)
+                        <div class="flex items-center gap-2" wire:key="member-{{ $member->id }}">
+                            <flux:avatar circle :name="$member->name" :initials="$member->initials()" />
+                            <div class="text-xs leading-tight"><div class="font-medium">{{ $member->shortName() }}</div><div class="text-zinc-500">{{ $member->pivot->role === Project::ROLE_MANAGER ? 'Voditelj projekta' : 'Član' }}</div></div>
                         </div>
-                        <div class="text-xs text-zinc-500">{{ $doc->administrativeCase?->name ?? 'Cijeli projekat' }} · {{ number_format($doc->size / 1024, 0) }} KB · {{ $doc->created_at->format('d.m.Y.') }} · {{ $doc->uploader?->name }}{{ $doc->description ? ' · '.$doc->description : '' }}</div>
-                    </div>
-                    @if($canUpdateProject && $doc->replaced_by_id === null)
-                        <div class="flex gap-1">
-                            @unless($doc->is_archived)<flux:button size="xs" variant="ghost" wire:click="$set('replaceDocumentId', {{ $doc->id }})">Nova verzija</flux:button>@endunless
-                            <flux:button size="xs" variant="ghost" wire:click="archiveDocument({{ $doc->id }})">{{ $doc->is_archived ? 'Vrati' : 'Arhiviraj' }}</flux:button>
-                            @if($doc->previousVersions->isEmpty())<flux:button size="xs" variant="ghost" wire:click="deleteDocument({{ $doc->id }})" wire:confirm="Trajno obrisati dokument?">Obriši</flux:button>@endif
-                        </div>
+                    @endforeach
+                    @if($canUpdate)
+                        <button type="button" wire:click="$set('showMembersModal', true)" class="flex items-center gap-2 text-xs font-medium text-blue-600" aria-label="Dodaj člana">
+                            <span class="flex size-10 items-center justify-center rounded-full border-2 border-dashed border-blue-300"><flux:icon.plus variant="mini" class="size-5" /></span>Dodaj
+                        </button>
                     @endif
                 </div>
-            @endforeach
-            @foreach($references as $doc)
-                <div class="flex flex-col gap-2 p-4 sm:flex-row sm:items-center" wire:key="ref-{{ $doc->id }}">
-                    <flux:icon :name="$doc->url ? 'link' : 'inbox-stack'" class="hidden size-5 shrink-0 text-zinc-400 sm:block" />
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            @if($doc->url)<a href="{{ $doc->url }}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium hover:text-blue-600">{{ $doc->title }} ↗</a>
-                            @else<span class="text-sm font-medium">{{ $doc->title }}</span>@endif
-                            @if($doc->protocol_number)<flux:badge color="zinc" size="sm">{{ $doc->protocol_number }}</flux:badge>@endif
-                            <flux:badge :color="$doc->direction->color()" size="sm">{{ $doc->direction->label() }}</flux:badge>
-                        </div>
-                        <div class="text-xs text-zinc-500">{{ $doc->administrativeCase?->name ?? 'Cijeli projekat' }} · {{ $doc->external_system }} · {{ $doc->document_date?->format('d.m.Y.') ?? 'bez datuma' }}{{ $doc->description ? ' · '.$doc->description : '' }}</div>
-                    </div>
-                    @if($canUpdateProject)
-                        <div class="flex gap-1">
-                            <flux:button size="xs" variant="ghost" wire:click="editReference({{ $doc->id }})">Uredi</flux:button>
-                            <flux:button size="xs" variant="ghost" wire:click="archiveReference({{ $doc->id }})">{{ $doc->is_archived ? 'Vrati' : 'Arhiviraj' }}</flux:button>
-                        </div>
-                    @endif
-                </div>
-            @endforeach
-            @if($files->isEmpty() && $references->isEmpty())
-                <div class="px-6 py-12 text-center text-sm text-zinc-500">{{ $needle !== '' ? 'Nijedan dokument ne odgovara pretrazi.' : 'Nema dokumenata.' }}</div>
-            @endif
-        </section>
-    @endif
+            </section>
+        </aside>
+    </div>
 
-    {{-- ============================================================= ISTORIJA --}}
-    @if($tab === 'istorija')
-        <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <flux:text class="text-sm">Posljednjih 50 promjena na projektu.</flux:text>
-            <div class="mt-3 space-y-3">
-                @forelse($project->activities as $activity)
-                    <div class="flex gap-3 text-sm" wire:key="activity-{{ $activity->id }}">
-                        <time class="w-28 shrink-0 text-xs text-zinc-400" datetime="{{ $activity->created_at->toIso8601String() }}">{{ $activity->created_at->format('d.m.Y. H:i') }}</time>
-                        <div class="min-w-0">
-                            <span class="font-medium">{{ $activity->title }}</span>
-                            <span class="text-zinc-500">— {{ $activity->user?->name ?? 'Sistem' }}</span>
-                            @if($activity->description)<div class="text-zinc-500">{{ $activity->description }}</div>@endif
-                        </div>
-                    </div>
-                @empty
-                    <flux:text class="text-sm">Nema evidentiranih aktivnosti.</flux:text>
-                @endforelse
-            </div>
-        </section>
-    @endif
-
-    {{-- ==================================================== MODAL: PREDMET --}}
+    {{-- ============================================================ MODALI --}}
     @if($showCaseModal)
-        <div class="fixed inset-0 z-40 bg-black/20" wire:click="$set('showCaseModal', false)"></div>
-        <div class="fixed inset-x-4 top-10 z-50 mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900" role="dialog" aria-label="Predmet">
-            <flux:heading size="lg">{{ $editingCaseId ? 'Uredi predmet' : 'Novi predmet' }}</flux:heading>
-            @if(! $editingCaseId && $templates->isNotEmpty())
-                <div class="mt-3 flex gap-1">
-                    <flux:button size="sm" :variant="$caseMode === 'manual' ? 'primary' : 'ghost'" wire:click="$set('caseMode', 'manual')">Prazan predmet</flux:button>
-                    <flux:button size="sm" :variant="$caseMode === 'template' ? 'primary' : 'ghost'" wire:click="$set('caseMode', 'template')">Iz šablona</flux:button>
-                </div>
-            @endif
-            <form wire:submit="saveCase" class="mt-4 space-y-3">
-                @if(! $editingCaseId && $caseMode === 'template')
-                    <flux:select wire:model="templateId" label="Šablon (zadaci se kreiraju automatski)"><option value="">Odaberite šablon</option>@foreach($templates as $template)<option value="{{ $template->id }}">{{ $template->name }} ({{ $template->items_count }} zadataka)</option>@endforeach</flux:select>
+        <div class="fixed inset-0 z-40 bg-black/30" wire:click="$set('showCaseModal', false)" aria-hidden="true"></div>
+        <div class="fixed inset-x-4 top-16 z-50 mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" role="dialog" aria-modal="true" aria-labelledby="case-modal-title" x-data x-on:keydown.escape.window="$wire.set('showCaseModal', false)">
+            <h2 id="case-modal-title" class="text-lg font-semibold">{{ $editingCaseId ? 'Uredi postupak' : 'Novi postupak' }}</h2>
+            <form wire:submit="saveCase" class="mt-4 space-y-4">
+                <flux:input wire:model="caseForm.name" label="Naziv" placeholder="npr. Urbanistička saglasnost" autofocus />
+                <flux:select wire:model="caseForm.institution_id" label="Institucija">
+                    <option value="">Bez institucije</option>
+                    @foreach($institutions as $institution)<option value="{{ $institution->id }}">{{ $institution->name }}</option>@endforeach
+                </flux:select>
+                <flux:select wire:model="caseForm.icon" label="Ikona">
+                    @foreach($icons as $iconName => $iconLabel)<option value="{{ $iconName }}">{{ $iconLabel }}</option>@endforeach
+                </flux:select>
+                @if(! $editingCaseId && $templates->isNotEmpty())
+                    <flux:select wire:model="caseForm.template_id" label="Šablon stavki (opciono)">
+                        <option value="">Bez šablona</option>
+                        @foreach($templates as $template)<option value="{{ $template->id }}">{{ $template->name }} ({{ $template->items_count }} stavki)</option>@endforeach
+                    </flux:select>
                 @endif
-                <flux:input wire:model="caseForm.name" label="Naziv predmeta" placeholder="npr. Urbanistička saglasnost" />
-                <div class="grid grid-cols-2 gap-3">
-                    <flux:select wire:model="caseForm.case_type_id" label="Vrsta"><option value="">{{ $caseMode === 'template' && ! $editingCaseId ? 'Iz šablona' : 'Odaberite' }}</option>@foreach($caseTypes as $type)<option value="{{ $type->id }}">{{ $type->name }}</option>@endforeach</flux:select>
-                    <flux:select wire:model="caseForm.case_status_id" label="Status">@foreach($caseStatuses as $caseStatus)<option value="{{ $caseStatus->id }}">{{ $caseStatus->name }}</option>@endforeach</flux:select>
-                    <flux:select wire:model="caseForm.institution_id" label="Institucija"><option value="">Bez institucije</option>@foreach($institutions as $institution)<option value="{{ $institution->id }}">{{ $institution->name }}</option>@endforeach</flux:select>
-                    <flux:select wire:model="caseForm.responsible_user_id" label="Odgovorna osoba">@foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</flux:select>
-                    <flux:input wire:model="caseForm.started_at" type="date" label="Datum pokretanja" />
-                    <flux:input wire:model="caseForm.response_due_at" type="date" label="Rok za odgovor" />
-                </div>
-                <flux:input wire:model="caseForm.reminder_days_before" type="number" min="0" max="365" label="Podsjeti koliko dana prije roka" />
-                <flux:textarea wire:model="caseForm.description" label="Opis" rows="2" />
-                <div class="flex justify-end gap-2 pt-2">
-                    <flux:button type="button" variant="ghost" wire:click="$set('showCaseModal', false)">Odustani</flux:button>
-                    <flux:button type="submit" variant="primary">{{ $editingCaseId ? 'Sačuvaj' : 'Kreiraj predmet' }}</flux:button>
-                </div>
+                <div class="flex justify-end gap-2"><flux:button type="button" variant="ghost" wire:click="$set('showCaseModal', false)">Odustani</flux:button><flux:button type="submit" variant="primary">Sačuvaj</flux:button></div>
             </form>
         </div>
     @endif
 
-    {{-- ======================================== MODAL: ZAVRŠAVANJE PROJEKTA --}}
+    @if($showProgressModal)
+        <div class="fixed inset-0 z-40 bg-black/30" wire:click="$set('showProgressModal', false)" aria-hidden="true"></div>
+        <div class="fixed inset-x-4 top-16 z-50 mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" role="dialog" aria-modal="true" aria-labelledby="progress-modal-title" x-data="{ value: $wire.entangle('manualProgress') }" x-on:keydown.escape.window="$wire.set('showProgressModal', false)">
+            <h2 id="progress-modal-title" class="text-lg font-semibold">Ručna procjena stanja</h2>
+            <form wire:submit="saveProgress" class="mt-4 space-y-4">
+                <div>
+                    <div class="flex items-center justify-between text-sm"><label for="manual-progress">Procjena</label><strong x-text="value + '%'"></strong></div>
+                    <input id="manual-progress" type="range" min="0" max="100" step="5" x-model.number="value" class="mt-2 w-full accent-blue-600" />
+                    <flux:error name="manualProgress" />
+                </div>
+                <flux:input wire:model="progressReason" label="Razlog (opciono)" placeholder="npr. završena projektna dokumentacija" />
+                <div class="flex justify-end gap-2"><flux:button type="button" variant="ghost" wire:click="$set('showProgressModal', false)">Odustani</flux:button><flux:button type="submit" variant="primary">Sačuvaj</flux:button></div>
+            </form>
+        </div>
+    @endif
+
     @if($showCompleteModal)
-        <div class="fixed inset-0 z-40 bg-black/20" wire:click="$set('showCompleteModal', false)"></div>
-        <div class="fixed inset-x-4 top-10 z-50 mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900" role="dialog" aria-label="Završavanje projekta">
-            <flux:heading size="lg">Završavanje projekta</flux:heading>
-            @if($blockersForCompletion !== [])
+        <div class="fixed inset-0 z-40 bg-black/30" wire:click="$set('showCompleteModal', false)" aria-hidden="true"></div>
+        <div class="fixed inset-x-4 top-16 z-50 mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" role="dialog" aria-modal="true" aria-labelledby="complete-modal-title">
+            <h2 id="complete-modal-title" class="text-lg font-semibold">Završavanje projekta</h2>
+            @if($blockers !== [])
                 <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                    <strong>Obavezni zadaci nisu završeni:</strong>
-                    <ul class="mt-1 list-disc pl-5">@foreach($blockersForCompletion as $blocker)<li>{{ $blocker }}</li>@endforeach</ul>
-                    Projekat možete završiti uz obrazloženje.
+                    <strong>Obavezne stavke nisu završene:</strong>
+                    <ul class="mt-1 list-disc pl-5">@foreach($blockers as $blocker)<li>{{ $blocker }}</li>@endforeach</ul>
                 </div>
             @endif
             <form wire:submit="completeProject" class="mt-4 space-y-3">
-                <flux:textarea wire:model="completionNote" label="Obrazloženje{{ $blockersForCompletion !== [] ? '' : ' (opciono)' }}" rows="3" />
-                <flux:error name="completion_note" />
+                <flux:textarea wire:model="completionNote" :label="$blockers !== [] ? 'Obrazloženje (obavezno)' : 'Obrazloženje (opciono)'" rows="3" />
                 <div class="flex justify-end gap-2"><flux:button type="button" variant="ghost" wire:click="$set('showCompleteModal', false)">Odustani</flux:button><flux:button type="submit" variant="primary">Završi projekat</flux:button></div>
             </form>
         </div>
     @endif
 
-    {{-- ==================================== MODAL: NOVA VERZIJA DOKUMENTA --}}
-    @if($replaceDocumentId)
-        <div class="fixed inset-0 z-40 bg-black/20" wire:click="$set('replaceDocumentId', null)"></div>
-        <div class="fixed inset-x-4 top-10 z-50 mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900" role="dialog" aria-label="Nova verzija dokumenta">
-            <flux:heading size="lg">Nova verzija dokumenta</flux:heading>
-            <flux:text class="mt-1 text-sm">Prethodna verzija ostaje sačuvana u arhivi.</flux:text>
-            <form wire:submit="replaceDocumentVersion" class="mt-4 space-y-3">
-                <flux:input wire:model="versionFile" type="file" label="Nova datoteka" />
-                <div class="flex justify-end gap-2"><flux:button type="button" variant="ghost" wire:click="$set('replaceDocumentId', null)">Odustani</flux:button><flux:button type="submit" variant="primary">Zamijeni</flux:button></div>
-            </form>
-        </div>
-    @endif
-
-    {{-- ============================================ MODAL: UREĐIVANJE REFERENCE --}}
-    @if($editingReferenceId)
-        <div class="fixed inset-0 z-40 bg-black/20" wire:click="$set('editingReferenceId', null)"></div>
-        <div class="fixed inset-x-4 top-10 z-50 mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900" role="dialog" aria-label="Uređivanje dokumenta">
-            <flux:heading size="lg">Uređivanje dokumenta</flux:heading>
-            <form wire:submit="saveReference" class="mt-4 grid gap-3 sm:grid-cols-2">
-                <flux:input wire:model="referenceForm.title" label="Naziv" />
-                <flux:input wire:model="referenceForm.url" label="URL" />
-                <flux:input wire:model="referenceForm.protocol_number" label="Broj protokola" />
-                <flux:input wire:model="referenceForm.document_date" type="date" label="Datum dokumenta" />
-                <flux:input wire:model="referenceForm.document_type" label="Vrsta dokumenta" />
-                <flux:select wire:model="referenceForm.direction" label="Smjer">@foreach(DocumentDirection::cases() as $direction)<option value="{{ $direction->value }}">{{ $direction->label() }}</option>@endforeach</flux:select>
-                <flux:textarea wire:model="referenceForm.description" label="Opis" rows="2" class="sm:col-span-2" />
-                <div class="flex justify-end gap-2 sm:col-span-2"><flux:button type="button" variant="ghost" wire:click="$set('editingReferenceId', null)">Odustani</flux:button><flux:button type="submit" variant="primary">Sačuvaj</flux:button></div>
+    @if($showMembersModal)
+        <div class="fixed inset-0 z-40 bg-black/30" wire:click="$set('showMembersModal', false)" aria-hidden="true"></div>
+        <div class="fixed inset-x-4 top-16 z-50 mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" role="dialog" aria-modal="true" aria-labelledby="members-modal-title" x-data x-on:keydown.escape.window="$wire.set('showMembersModal', false)">
+            <div class="flex items-center justify-between"><h2 id="members-modal-title" class="text-lg font-semibold">Članovi projekta</h2><flux:button size="sm" variant="ghost" icon="x-mark" wire:click="$set('showMembersModal', false)" aria-label="Zatvori" /></div>
+            <ul class="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
+                @foreach($this->members as $member)
+                    <li class="flex items-center gap-3 py-2" wire:key="member-row-{{ $member->id }}">
+                        <flux:avatar size="sm" circle :name="$member->name" :initials="$member->initials()" />
+                        <span class="flex-1 text-sm">{{ $member->name }}</span>
+                        <select wire:change="changeMemberRole({{ $member->id }}, $event.target.value)" aria-label="Uloga za {{ $member->name }}" class="rounded-md border-zinc-200 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="{{ Project::ROLE_MANAGER }}" @selected($member->pivot->role === Project::ROLE_MANAGER)>Voditelj projekta</option>
+                            <option value="{{ Project::ROLE_MEMBER }}" @selected($member->pivot->role !== Project::ROLE_MANAGER)>Član</option>
+                        </select>
+                        @if($member->id !== $project->responsible_user_id)
+                            <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeMember({{ $member->id }})" wire:confirm="Ukloniti {{ $member->name }} iz projekta?" aria-label="Ukloni {{ $member->name }}" />
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+            <form wire:submit="addMember" class="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-4 sm:flex-row sm:items-start dark:border-zinc-800">
+                <div class="flex-1">
+                    <flux:select wire:model="newMemberId" aria-label="Korisnik"><option value="">Odaberite korisnika</option>@foreach($availableUsers as $availableUser)<option value="{{ $availableUser->id }}">{{ $availableUser->name }}</option>@endforeach</flux:select>
+                    <flux:error name="newMemberId" />
+                </div>
+                <flux:select wire:model="newMemberRole" class="sm:max-w-40" aria-label="Uloga"><option value="{{ Project::ROLE_MEMBER }}">Član</option><option value="{{ Project::ROLE_MANAGER }}">Voditelj projekta</option></flux:select>
+                <flux:button type="submit" variant="primary" icon="plus">Dodaj</flux:button>
             </form>
         </div>
     @endif

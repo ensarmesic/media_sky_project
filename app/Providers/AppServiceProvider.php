@@ -24,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Livewire privremeni upload podrazumijevano dozvoljava 12 MB; usklađujemo s limitom dokumenata.
+        config(['livewire.temporary_file_upload.rules' => ['required', 'file', 'max:'.config('projectflow.documents.max_size')]]);
     }
 
     /**

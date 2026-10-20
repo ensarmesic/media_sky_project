@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Support\Collection;
 
 /**
  * Dokument (fajl) na projektu, postupku, stavci ili komentaru. Čuva se na privatnom
@@ -74,7 +74,7 @@ class ProjectDocument extends Model
     /** Sve starije verzije (lanac replaced_by_id unazad), najnovija prva. */
     public function versionHistory(): Collection
     {
-        $history = collect();
+        $history = new Collection;
         $current = $this;
         while ($history->count() < 50 && ($previous = self::where('replaced_by_id', $current->id)->first()) !== null) {
             $history->push($previous);
