@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\DailyDigestNotification;
 use App\Services\NotificationDispatchService;
+use App\Services\SystemHealth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -141,6 +142,9 @@ Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uklj
             $user->notify(new DailyDigestNotification(today()->format('d.m.Y.'), $overdueCases, $overdueItems, $dueSoonItems, $waitingItems));
         });
 })->purpose('Pošalji dnevni sažetak otvorenih obaveza');
+
+// Otkucaj schedulera za "Stanje sistema" i app:health.
+Schedule::call(fn () => app(SystemHealth::class)->recordSchedulerRun())->everyMinute()->name('health:heartbeat');
 
 Schedule::command('items:send-deadline-reminders')->dailyAt('07:00')->withoutOverlapping();
 Schedule::command('cases:send-deadline-reminders')->dailyAt('07:05')->withoutOverlapping();

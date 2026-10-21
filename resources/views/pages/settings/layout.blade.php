@@ -9,6 +9,7 @@
             @if(auth()->user()->isAdministrator())
                 <flux:navlist.item :href="route('case-catalogs.index')" wire:navigate>Šifrarnici postupaka</flux:navlist.item>
                 <flux:navlist.item :href="route('users.index')" wire:navigate>Korisnici</flux:navlist.item>
+                <flux:navlist.item :href="route('system-health.index')" wire:navigate>Stanje sistema</flux:navlist.item>
             @endif
         </flux:navlist>
     </div>

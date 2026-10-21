@@ -33,6 +33,13 @@ return [
         'waiting_default_interval' => (int) env('REMINDER_WAITING_INTERVAL', 10),
     ],
 
+    'health' => [
+        // Upozorenje adminu ako scheduler nije radio duže od ovoliko minuta.
+        'scheduler_stale_minutes' => (int) env('HEALTH_SCHEDULER_STALE_MINUTES', 10),
+        // Upozorenje adminu ako je na čekanju više jobova od ovoga.
+        'max_pending_jobs' => (int) env('HEALTH_MAX_PENDING_JOBS', 20),
+    ],
+
     'protocol' => [
         // Kontrolisani backend linkovi prema internoj protokolarnoj aplikaciji.
         'base_url' => env('PROTOCOL_BASE_URL'),
