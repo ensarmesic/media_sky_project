@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ReportController;
 use App\Models\AdministrativeCase;
 use App\Models\Project;
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('projekti/{project}/dokumenti', 'pages::projects.documents')->name('projects.documents');
     Route::livewire('projekti/{project}/historija', 'pages::projects.history')->name('projects.history');
     Route::get('projekti/{project}/izvjestaj.pdf', [ReportController::class, 'projectPdf'])->name('projects.report.pdf');
+    Route::get('projekti/{project}/izvoz.xlsx', [ExportController::class, 'project'])->name('projects.export.xlsx');
     Route::livewire('projekti/{project}', 'pages::projects.show')->name('projects.show');
 
     // Dokumenti: samo kroz rute s provjerom pristupa (privatni disk).

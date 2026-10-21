@@ -442,6 +442,10 @@ new #[Title('Projekat')] class extends Component {
                         @if($project->category)<span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 dark:border-zinc-700 dark:bg-zinc-900"><flux:icon.cog-6-tooth variant="mini" class="size-4 text-zinc-400" />{{ $project->category->name }}</span>@endif
                         <span class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 dark:border-zinc-700 dark:bg-zinc-900"><flux:icon.calendar variant="mini" class="size-4 text-zinc-400" />{{ $project->start_date->format('d.m.Y.') }} – {{ $project->planned_end_date?->format('d.m.Y.') ?? 'bez roka' }}</span>
                     </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a href="{{ route('projects.report.pdf', $project) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"><flux:icon.document-text variant="mini" class="size-4 text-red-500" />PDF izvještaj</a>
+                        <a href="{{ route('projects.export.xlsx', ['project' => $project, 'status' => $caseFilter]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800" title="{{ $caseFilter === 'all' ? 'Svi postupci' : 'Samo postupci iz odabranog taba' }}"><flux:icon.table-cells variant="mini" class="size-4 text-green-600" />Izvoz u Excel</a>
+                    </div>
                 </div>
 
                 <div class="grid shrink-0 gap-4 sm:grid-cols-[11rem_16rem]">
