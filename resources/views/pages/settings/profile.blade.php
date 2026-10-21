@@ -1,8 +1,10 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\GrammaticalGender;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -12,6 +14,7 @@ new #[Title('Profile settings')] class extends Component {
 
     public string $name = '';
     public string $username = '';
+    public string $grammatical_gender = '';
 
     /**
      * Mount the component.
@@ -20,6 +23,7 @@ new #[Title('Profile settings')] class extends Component {
     {
         $this->name = Auth::user()->name;
         $this->username = Auth::user()->username;
+        $this->grammatical_gender = (string) Auth::user()->grammatical_gender?->value;
     }
 
     /**
@@ -29,7 +33,11 @@ new #[Title('Profile settings')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate([
+            ...$this->profileRules($user->id),
+            'grammatical_gender' => ['nullable', Rule::enum(GrammaticalGender::class)],
+        ]);
+        $validated['grammatical_gender'] = $validated['grammatical_gender'] ?: null;
 
         $user->fill($validated);
 
@@ -55,6 +63,11 @@ new #[Title('Profile settings')] class extends Component {
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
             <flux:input wire:model="username" label="Korisničko ime" type="text" required autocomplete="username" />
+
+            <flux:select wire:model="grammatical_gender" label="Oblik obraćanja" description="Koristi se u historiji promjena, npr. „Ensar M. je promijenio status…“.">
+                <option value="">Nije odabrano (je promijenio/la)</option>
+                @foreach(GrammaticalGender::cases() as $gender)<option value="{{ $gender->value }}">{{ $gender->label() }}</option>@endforeach
+            </flux:select>
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">

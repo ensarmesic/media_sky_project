@@ -95,7 +95,7 @@ class ProjectManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('projects.show', ['project' => $project, 'prikaz' => 'istorija']))
             ->assertOk()
-            ->assertSee('Aktivnost ovog projekta')
-            ->assertDontSee('Aktivnost drugog projekta');
+            ->assertSee('aktivnost ovog projekta')
+            ->assertDontSee('aktivnost drugog projekta');
     }
 }

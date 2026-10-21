@@ -126,7 +126,7 @@ new #[Title('Projekat')] class extends Component {
     #[Computed]
     public function recentActivities(): Collection
     {
-        return $this->project->activities()->with('user:id,name')->latest()->latest('id')->limit(5)->get();
+        return $this->project->activities()->with('user:id,name,grammatical_gender')->latest()->latest('id')->limit(5)->get();
     }
 
     #[Computed]
@@ -687,8 +687,9 @@ new #[Title('Projekat')] class extends Component {
                     @forelse($this->recentActivities as $activity)
                         <li class="flex gap-3 text-sm" wire:key="recent-{{ $activity->id }}">
                             <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"><flux:icon :name="$activity->icon()" variant="micro" class="size-4" /></span>
-                            <span class="min-w-0 flex-1 truncate" title="{{ $activity->title }}">{{ $activity->title }}</span>
-                            <span class="shrink-0 text-right text-xs text-zinc-500">{{ $activity->created_at->format('d.m.Y.') }}<br>{{ $activity->user?->shortName() }}</span>
+                            @php($sentence = App\Support\ActivityPresenter::sentence($activity))
+                            <span class="line-clamp-2 min-w-0 flex-1" title="{{ $sentence }}">{{ $sentence }}</span>
+                            <span class="shrink-0 text-xs text-zinc-500">{{ $activity->created_at->format('d.m.Y.') }}</span>
                         </li>
                     @empty
                         <li class="text-sm text-zinc-500">Još nema aktivnosti.</li>

@@ -44,14 +44,16 @@ class AdministrativeCaseService
         return DB::transaction(function () use ($case, $data, $user) {
             $oldStatus = $case->status;
             $oldDeadline = $case->response_due_at?->format('Y-m-d');
+            $original = $case->only(['name', 'institution_id']);
             $case->update($data);
+            $changes = collect($case->getChanges())->except(['updated_at', 'case_status_id', 'response_due_at', 'deadline_reminded_at', 'overdue_reminded_at']);
             $statusChanged = $case->wasChanged('case_status_id');
 
             if ($oldDeadline !== $case->response_due_at?->format('Y-m-d')) {
                 $case->update(['deadline_reminded_at' => null, 'overdue_reminded_at' => null]);
                 $description = ($oldDeadline ?: 'bez roka').' → '.($case->response_due_at?->format('d.m.Y.') ?: 'bez roka');
                 $case->activities()->create(['user_id' => $user->id, 'event_type' => 'deadline_changed', 'title' => 'Rok za odgovor promijenjen', 'description' => $description]);
-                app(ProjectActivityService::class)->record($case->project, 'case_deadline_changed', 'Promijenjen rok predmeta: '.$case->name, $user, $case, $description);
+                app(ProjectActivityService::class)->record($case->project, 'case_deadline_changed', 'Promijenjen rok postupka: '.$case->name, $user, $case, $description);
             }
 
             if ($statusChanged) {
@@ -73,11 +75,19 @@ class AdministrativeCaseService
                     $case->url(),
                     $case->response_due_at?->format('Y-m-d'),
                 );
-                app(ProjectActivityService::class)->record($case->project, 'case_status_changed', 'Promijenjen status predmeta: '.$case->name, $user, $case, $description);
+                app(ProjectActivityService::class)->record($case->project, 'case_status_changed', 'Promijenjen status postupka: '.$case->name, $user, $case, $description);
             }
 
-            $case->activities()->create(['user_id' => $user->id, 'event_type' => 'updated', 'title' => 'Podaci predmeta ažurirani']);
-            app(ProjectActivityService::class)->record($case->project, 'case_updated', 'Ažuriran predmet: '.$case->name, $user, $case);
+            // Bilježe se samo stvarne promjene: naziv i institucija pojedinačno (staro → novo), ostalo zbirno.
+            foreach (['name' => 'Promijenjen naziv postupka', 'institution_id' => 'Promijenjena institucija postupka'] as $field => $title) {
+                if ($changes->has($field)) {
+                    app(ProjectActivityService::class)->record($case->project, 'case.'.$field, $title.': '.$case->name, $user, $case, null, ['field' => $field, 'old' => $original[$field] ?? null, 'new' => $case->getAttribute($field)]);
+                }
+            }
+            if ($changes->except(['name', 'institution_id', 'position'])->isNotEmpty()) {
+                $case->activities()->create(['user_id' => $user->id, 'event_type' => 'updated', 'title' => 'Podaci postupka ažurirani']);
+                app(ProjectActivityService::class)->record($case->project, 'case_updated', 'Ažuriran postupak: '.$case->name, $user, $case);
+            }
 
             return $case->refresh();
         });
@@ -86,7 +96,7 @@ class AdministrativeCaseService
     public function addComment(AdministrativeCase $case, User $user, string $comment): void
     {
         $case->activities()->create(['user_id' => $user->id, 'event_type' => 'comment', 'title' => 'Dodana bilješka', 'description' => $comment]);
-        app(ProjectActivityService::class)->record($case->project, 'case_comment', 'Dodana bilješka na predmet: '.$case->name, $user, $case, $comment);
+        app(ProjectActivityService::class)->record($case->project, 'case_comment', 'Dodana bilješka na postupak: '.$case->name, $user, $case, $comment);
     }
 
     /** Arhiviranje postupka — podaci i istorija ostaju sačuvani, postupak izlazi iz aktivnih lista. */
@@ -94,7 +104,7 @@ class AdministrativeCaseService
     {
         $case->update(['is_archived' => $archive, 'archived_at' => $archive ? now() : null]);
         $case->activities()->create(['user_id' => $user->id, 'event_type' => $archive ? 'archived' : 'restored', 'title' => $archive ? 'Predmet arhiviran' : 'Predmet vraćen iz arhive']);
-        app(ProjectActivityService::class)->record($case->project, $archive ? 'case_archived' : 'case_restored', ($archive ? 'Arhiviran predmet: ' : 'Predmet vraćen iz arhive: ').$case->name, $user, $case);
+        app(ProjectActivityService::class)->record($case->project, $archive ? 'case_archived' : 'case_restored', ($archive ? 'Arhiviran postupak: ' : 'Postupak vraćen iz arhive: ').$case->name, $user, $case);
 
         return $case->refresh();
     }
@@ -155,7 +165,7 @@ class AdministrativeCaseService
             }
 
             $copy->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Predmet kopiran iz: '.$case->name]);
-            app(ProjectActivityService::class)->record($case->project, 'case_created', 'Kopiran predmet: '.$copy->name, $user, $copy);
+            app(ProjectActivityService::class)->record($case->project, 'case_created', 'Kopiran postupak: '.$copy->name, $user, $copy);
 
             return $copy->refresh();
         });
@@ -184,7 +194,7 @@ class AdministrativeCaseService
             }
             if ($copied > 0) {
                 $case->activities()->create(['user_id' => $user->id, 'event_type' => 'items_copied', 'title' => 'Kopirani zadaci iz predmeta: '.$source->name, 'description' => 'Broj kopiranih zadataka: '.$copied]);
-                app(ProjectActivityService::class)->record($case->project, 'case_items_copied', 'Kopirani zadaci ('.$copied.') iz predmeta: '.$source->name, $user, $case);
+                app(ProjectActivityService::class)->record($case->project, 'case_items_copied', 'Kopirane stavke ('.$copied.') iz postupka: '.$source->name, $user, $case);
             }
 
             return $copied;

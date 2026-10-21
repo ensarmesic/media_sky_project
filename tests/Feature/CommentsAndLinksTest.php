@@ -137,9 +137,9 @@ class CommentsAndLinksTest extends TestCase
         $this->actingAs($this->manager);
 
         Livewire::test('comments', ['ownerType' => 'item', 'ownerId' => $this->item->id])
-            ->assertSee('Komentar stavke')->assertDontSee('promijenjen status')
-            ->set('mode', 'activity')->assertDontSee('Komentar stavke')->assertSee('Ensar M.: promijenjen status iz Nije pokrenuto u Predato')
-            ->set('mode', 'all')->assertSee('Komentar stavke')->assertSee('promijenjen status');
+            ->assertSee('Komentar stavke')->assertDontSee('promijenio/la status')
+            ->set('mode', 'activity')->assertDontSee('Komentar stavke')->assertSee('Ensar M. je promijenio/la status iz Nije pokrenuto u Predato')
+            ->set('mode', 'all')->assertSee('Komentar stavke')->assertSee('promijenio/la status');
     }
 
     public function test_links_are_validated_shown_by_domain_edited_and_deleted(): void

@@ -85,7 +85,7 @@ new class extends Component {
                 ->map(fn (Comment $comment) => ['type' => 'comment', 'at' => $comment->created_at, 'model' => $comment]));
         }
         if ($this->mode !== 'comments') {
-            $entries = $entries->merge($this->owner()->activityLog()->with('user:id,name')->where('event_type', 'not like', 'comment.%')->get()
+            $entries = $entries->merge($this->owner()->activityLog()->with('user:id,name,grammatical_gender')->where('event_type', 'not like', 'comment.%')->get()
                 ->map(fn ($activity) => ['type' => 'activity', 'at' => $activity->created_at, 'model' => $activity]));
         }
 

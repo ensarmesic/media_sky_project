@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\GrammaticalGender;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property GrammaticalGender|null $grammatical_gender
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -31,7 +33,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'username', 'email', 'password', 'role'])]
+#[Fillable(['name', 'username', 'grammatical_gender', 'email', 'password', 'role'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -49,6 +51,7 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'grammatical_gender' => GrammaticalGender::class,
         ];
     }
 
@@ -89,6 +92,12 @@ class User extends Authenticatable implements PasskeyUser
         $parts = preg_split('/\s+/u', trim($this->name)) ?: [];
 
         return count($parts) > 1 ? $parts[0].' '.mb_substr(end($parts), 0, 1).'.' : $this->name;
+    }
+
+    /** Glagol u rodu korisnika: verb('promijenio') → "promijenio" / "promijenila" / "promijenio/la". */
+    public function verb(string $masculine): string
+    {
+        return GrammaticalGender::verb($this->grammatical_gender, $masculine);
     }
 
     /**

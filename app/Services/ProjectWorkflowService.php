@@ -44,7 +44,7 @@ class ProjectWorkflowService
             }
             $project->update($updates);
 
-            app(ProjectActivityService::class)->record($project, 'status_changed', 'Status projekta promijenjen', $user, $project, $old->label().' → '.$status->label().($reason !== null && $reason !== '' ? ' · '.$reason : null));
+            app(ProjectActivityService::class)->record($project, 'status_changed', 'Status projekta promijenjen', $user, $project, $old->label().' → '.$status->label().($reason !== null && $reason !== '' ? ' · '.$reason : null), ['field' => 'project_status', 'old' => $old->value, 'new' => $status->value]);
 
             if ($status === ProjectStatus::Completed) {
                 app(NotificationDispatchService::class)->dispatch(

@@ -39,7 +39,7 @@ new #[Title('Historija projekta')] class extends Component {
     public function activities()
     {
         return $this->project->activities()
-            ->with(['user:id,name', 'subject'])
+            ->with(['user:id,name,grammatical_gender', 'subject'])
             ->when($this->type !== '', fn (Builder $query) => ActivityPresenter::applyTypeFilter($query, $this->type))
             ->when($this->userId !== '', fn (Builder $query) => $query->where('user_id', $this->userId))
             ->latest()->latest('id')
