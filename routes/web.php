@@ -37,6 +37,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('stavke/{item}', 'pages::tasks.show')->name('tasks.show');
     Route::redirect('zadaci/{item}', '/stavke/{item}');
     Route::livewire('moje-stavke', 'pages::my-tasks.index')->name('my-tasks.index');
+    Route::livewire('institucije', 'pages::institutions.index')->name('institutions.index');
+    Route::get('institucije/{institution}/izvoz.xlsx', [ExportController::class, 'institution'])->name('institutions.export.xlsx');
+    Route::livewire('institucije/{institution}', 'pages::institutions.show')->name('institutions.show');
     Route::redirect('moji-zadaci', '/moje-stavke');
 
     // Stari linkovi na predmete (npr. iz ranije poslanih obavještenja) vode u projekat.

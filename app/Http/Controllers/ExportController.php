@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CaseProgressStatus;
+use App\Exports\InstitutionExport;
 use App\Exports\ProjectExport;
+use App\Models\Institution;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +24,23 @@ class ExportController extends Controller
         $path = tempnam(sys_get_temp_dir(), 'msp-xlsx-');
         $export->store($path);
 
-        return response()->download($path, $export->filename(), [
+        return $this->download($path, $export->filename());
+    }
+
+    public function institution(Request $request, Institution $institution): BinaryFileResponse
+    {
+        Gate::authorize('view', $institution);
+
+        $export = new InstitutionExport($institution, $request->user());
+        $path = tempnam(sys_get_temp_dir(), 'msp-xlsx-');
+        $export->store($path);
+
+        return $this->download($path, $export->filename());
+    }
+
+    private function download(string $path, string $filename): BinaryFileResponse
+    {
+        return response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend();
     }

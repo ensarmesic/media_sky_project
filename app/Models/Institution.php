@@ -28,6 +28,12 @@ class Institution extends Model
         return $this->hasMany(AdministrativeCase::class);
     }
 
+    /** @return HasMany<AdministrativeCaseItem, $this> */
+    public function items(): HasMany
+    {
+        return $this->hasMany(AdministrativeCaseItem::class);
+    }
+
     /** @return HasMany<DocumentReference, $this> */
     public function documentReferences(): HasMany
     {

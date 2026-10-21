@@ -37,6 +37,14 @@ Aplikacija (ranije ProjectFlow) preuređena prema planu iz `PROJECTFLOW_TASKS.md
 - Obavijesti idu kroz queue: potreban je `php artisan queue:work` (ili supervisor) i `php artisan schedule:work` / cron za dnevne podsjetnike.
 - Logo u PDF izvještaju traži PHP ekstenziju GD; bez nje se ispisuje tekstualni naziv.
 
+### Produkcija, backup i izvještaji (Taskovi 13–17)
+- **Baza:** SQLite konekcija koristi WAL, `busy_timeout` i `synchronous=NORMAL`; pripremljene su MySQL/MariaDB postavke i zaseban MySQL CI job, uz smjernice za izbor i migraciju baze.
+- **Queue i scheduler:** dodani su zapisi posljednjeg rada, upozorenje administratoru, stranica **Stanje sistema**, upravljanje neuspjelim poslovima i komanda `php artisan app:health`; produkcijska dokumentacija sadrži Supervisor, cron i Windows upute.
+- **Backup:** dnevni backup baze i privatnih dokumenata, raspored čišćenja i nadzora, politika čuvanja, obavijesti administratorima, ručno pokretanje kroz queue i postupak vraćanja iz backupa.
+- **Excel izvoz:** projekt se izvozi u formatirani XLSX s listovima Postupci, Stavke i Dokumenti, uz autorizaciju, aktivne filtere, Excel datume i istaknute statuse/kašnjenja.
+- **Institucije:** nova lista institucija s pokazateljima pažnje i pretragom te detalj s kontaktnim podacima, otvorenim stavkama grupisanim po stanju, brzom promjenom statusa, kopiranjem liste i XLSX izvozom. Podaci su ograničeni na projekte koje korisnik smije vidjeti i učitavaju se bez N+1 upita.
+- Slobodno uneseni primaoci iz starijih stavki nisu automatski povezivani s institucijama; postojeći tekst ostaje sačuvan dok se ne odobri mapiranje.
+
 ## Prijedlog sljedećih koraka
 1. **Referentni dizajn:** `docs/dizajn-projekat.png` ne postoji u repozitoriju. Kad se doda, uraditi vizuelno poređenje razmaka i veličina.
 2. **Tamni logo:** dodati `public/img/logo-dark.png`; do tada radi privremeni filter.
