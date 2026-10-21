@@ -418,7 +418,7 @@ new #[Title('Projekat')] class extends Component {
 @php($warningDays = (int) config('projectflow.attention.warning_days', 3))
 @php($itemsWord = fn (int $count) => $count % 10 === 1 && $count % 100 !== 11 ? 'stavka' : (in_array($count % 10, [2, 3, 4], true) && ! in_array($count % 100, [12, 13, 14], true) ? 'stavke' : 'stavki'))
 
-<div class="mx-auto w-full max-w-[1400px]">
+<div class="mx-auto w-full max-w-350">
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {{-- ============================================================ GLAVNI DIO --}}
         <div class="min-w-0 space-y-5">
@@ -549,11 +549,11 @@ new #[Title('Projekat')] class extends Component {
                             {{-- Tabela stavki --}}
                             <div x-show="open.includes({{ $case->id }})" x-cloak class="border-t border-zinc-100 dark:border-zinc-800">
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[680px] text-sm 2xl:min-w-[900px]">
+                                    <table class="w-full min-w-170 text-sm 2xl:min-w-225">
                                         <thead>
                                             <tr class="text-left text-xs text-zinc-500">
                                                 <th class="w-10 px-3 py-2.5 font-medium">#</th>
-                                                <th class="sticky left-0 z-[1] bg-white px-3 py-2.5 font-medium dark:bg-zinc-900">Stavka</th>
+                                                <th class="sticky left-0 z-1 bg-white px-3 py-2.5 font-medium dark:bg-zinc-900">Stavka</th>
                                                 <th class="px-3 py-2.5 font-medium">Status</th>
                                                 <th class="hidden px-3 py-2.5 font-medium 2xl:table-cell">Institucija / primalac</th>
                                                 <th class="px-3 py-2.5 font-medium">Rok</th>
@@ -561,7 +561,7 @@ new #[Title('Projekat')] class extends Component {
                                                 <th class="px-3 py-2.5 font-medium">Odgovor</th>
                                                 <th class="px-3 py-2.5 font-medium">Dokumenti</th>
                                                 <th class="px-3 py-2.5 font-medium"><span class="2xl:hidden">Osoba</span><span class="hidden 2xl:inline">Odgovorna osoba</span></th>
-                                                <th class="sticky right-0 z-[1] w-14 bg-white px-3 py-2.5 text-right font-medium dark:bg-zinc-900">Akcije</th>
+                                                <th class="sticky right-0 z-1 w-14 bg-white px-3 py-2.5 text-right font-medium dark:bg-zinc-900">Akcije</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800" @if($canEditCase) wire:sort="sortItems" @endif>
@@ -572,7 +572,7 @@ new #[Title('Projekat')] class extends Component {
                                                     <td class="px-3 py-2.5 text-zinc-500">
                                                         @if($canEditCase)<span wire:sort:handle class="cursor-grab" title="Prevuci za promjenu redoslijeda">{{ $loop->iteration }}</span>@else{{ $loop->iteration }}@endif
                                                     </td>
-                                                    <td class="sticky left-0 z-[1] w-72 min-w-52 bg-white px-3 py-2.5 group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
+                                                    <td class="sticky left-0 z-1 w-72 min-w-52 bg-white px-3 py-2.5 group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
                                                         <a href="{{ $item->url() }}" title="{{ $item->name }}" x-on:click="if (! $event.metaKey && ! $event.ctrlKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $dispatch('open-task', { id: {{ $item->id }} }) }" @class(['block font-medium leading-snug break-words hover:text-blue-600', 'text-zinc-400 line-through' => $item->status === CaseItemStatus::Cancelled])>{{ $item->name }}</a>
                                                         @if($recipient = $item->recipientName())<span class="mt-0.5 block truncate text-xs text-zinc-500 2xl:hidden" title="{{ $recipient }}">{{ $recipient }}</span>@endif
                                                     </td>
@@ -595,7 +595,7 @@ new #[Title('Projekat')] class extends Component {
                                                             <span class="text-zinc-400">–</span>
                                                         @endif
                                                     </td>
-                                                    <td class="sticky right-0 z-[1] bg-white px-3 py-2.5 text-right group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
+                                                    <td class="sticky right-0 z-1 bg-white px-3 py-2.5 text-right group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
                                                         <x-popover-menu align="end">
                                                             <x-slot:trigger>
                                                                 <button type="button" class="pf-icon-button text-lg leading-none" aria-haspopup="menu" :aria-expanded="open.toString()" aria-label="Akcije za stavku {{ $item->name }}">⋯</button>
