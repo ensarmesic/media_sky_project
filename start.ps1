@@ -15,6 +15,10 @@ if (Test-Path "$root\bootstrap\cache\config.php") {
 Write-Host 'Primjenjujem nove migracije (ako ih ima)...'
 php artisan migrate --force
 
+# Rute i eventi se keširaju svježe pri svakom pokretanju (brže, a nikad zastarjelo). Konfiguracija se NE kešira.
+php artisan route:cache | Out-Null
+php artisan event:cache | Out-Null
+
 if (-not (Test-Path "$root\public\build\manifest.json")) {
     Write-Host 'Gradim frontend (npm run build)...'
     npm run build
