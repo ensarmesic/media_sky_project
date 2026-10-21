@@ -496,13 +496,15 @@ new #[Title('Projekat')] class extends Component {
                         @php($lastActivity = $this->lastActivityByCase->get($case->id))
                         @php($canEditCase = $canEditCases)
                         <article id="predmet-{{ $case->id }}" wire:key="case-{{ $case->id }}" @if($canEditCases && $caseFilter === 'all') wire:sort:item="{{ $case->id }}" @endif class="scroll-mt-20 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                            <div class="flex flex-wrap items-center gap-4 p-4 lg:flex-nowrap">
+                            {{-- Naziv postupka ima najmanje 14rem; kad nema mjesta, napredak/status/akcije prelaze u novi red umjesto da skrate naziv. --}}
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
                                 @if($canEditCases && $caseFilter === 'all')<span wire:sort:handle class="hidden cursor-grab text-zinc-300 hover:text-zinc-500 sm:block" title="Prevuci za promjenu redoslijeda"><flux:icon.bars-2 variant="mini" class="size-4" /></span>@endif
-                                <button type="button" x-on:click="toggle({{ $case->id }})" class="flex min-w-0 flex-1 items-center gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg" :aria-expanded="open.includes({{ $case->id }}).toString()">
+                                <button type="button" x-on:click="toggle({{ $case->id }})" class="flex min-w-56 flex-1 basis-56 items-center gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" :aria-expanded="open.includes({{ $case->id }}).toString()">
                                     <span class="flex size-11 shrink-0 items-center justify-center rounded-xl {{ $caseStatus->iconClass() }}"><flux:icon :name="$case->icon ?: 'document-text'" class="size-6" /></span>
                                     <span class="min-w-0">
                                         <span class="block truncate font-semibold">{{ $case->name }}</span>
                                         <span class="block truncate text-sm text-zinc-500">{{ $case->institution?->name ?? 'Bez institucije' }}</span>
+                                        @if($lastActivity)<span class="block truncate text-xs text-zinc-400 2xl:hidden" title="{{ $lastActivity->title }}">{{ $lastActivity->created_at->format('d.m.Y.') }} · {{ $lastActivity->title }}</span>@endif
                                     </span>
                                 </button>
                                 <div class="w-40 shrink-0">
@@ -512,8 +514,8 @@ new #[Title('Projekat')] class extends Component {
                                         <span class="w-9 text-right text-xs text-zinc-500">{{ $counts['percent'] }}%</span>
                                     </div>
                                 </div>
-                                <div class="w-28 shrink-0"><flux:badge :color="$caseStatus->color()" size="sm">{{ $caseStatus->label() }}</flux:badge></div>
-                                <div class="hidden w-48 shrink-0 border-l border-zinc-100 pl-4 text-xs text-zinc-500 md:block dark:border-zinc-800">
+                                <div class="shrink-0 sm:w-28"><flux:badge :color="$caseStatus->color()" size="sm">{{ $caseStatus->label() }}</flux:badge></div>
+                                <div class="hidden w-44 shrink-0 border-l border-zinc-100 pl-4 text-xs text-zinc-500 2xl:block dark:border-zinc-800">
                                     <div>Posljednja aktivnost</div>
                                     @if($lastActivity)
                                         <div class="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{{ $lastActivity->created_at->format('d.m.Y.') }}</div>

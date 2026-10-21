@@ -6,7 +6,22 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int $project_id
+ * @property int|null $user_id
+ * @property string $event_type
+ * @property string|null $subject_type
+ * @property int|null $subject_id
+ * @property string $title
+ * @property string|null $description
+ * @property array<string, mixed>|null $metadata
+ * @property Carbon $created_at
+ * @property-read User|null $user
+ * @property-read Model|null $subject
+ */
 #[Fillable(['project_id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'description', 'metadata'])]
 class ProjectActivity extends Model
 {
