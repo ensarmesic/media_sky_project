@@ -724,6 +724,12 @@ new #[Title('Projekat')] class extends Component {
                 </ul>
             </section>
 
+            {{-- Linkovi projekta --}}
+            <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h2 class="mb-3 flex items-center gap-2 font-semibold"><flux:icon.link class="size-5 text-zinc-500" />Linkovi projekta</h2>
+                <livewire:links owner-type="project" :owner-id="$project->id" wire:key="project-links-{{ $project->id }}" />
+            </section>
+
             {{-- Članovi projekta --}}
             <section class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div class="flex items-center justify-between">
