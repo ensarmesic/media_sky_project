@@ -109,6 +109,11 @@ select:focus[data-flux-control] {
 .pf-menu {
     @apply absolute z-30 mt-1 w-48 rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900;
 }
+
+/* Meni iz <x-popover-menu>: pozicija dolazi od x-anchor (fixed), iznad tabela, zaglavlja i bočnih panela. */
+.pf-popover {
+    @apply z-[60] max-w-[calc(100vw-1rem)] rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900;
+}
 .pf-menu-item {
     @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none dark:hover:bg-zinc-800 dark:focus:bg-zinc-800;
 }

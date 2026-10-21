@@ -59,7 +59,7 @@ class AdministrativeCaseService
             if ($statusChanged) {
                 $newStatus = $case->status()->first();
                 if ($newStatus->system_key === 'resolved' && $case->items()->where('is_active', true)->where('is_required_for_closure', true)->whereNot('status', 'completed')->exists()) {
-                    throw ValidationException::withMessages(['case_status_id' => 'Predmet se ne može zatvoriti dok obavezni završni koraci nisu završeni.']);
+                    throw ValidationException::withMessages(['case_status_id' => 'Postupak se ne može zatvoriti dok obavezne završne stavke nisu završene.']);
                 }
                 $description = $oldStatus->name.' → '.$newStatus->name;
                 $case->activities()->create(['user_id' => $user->id, 'event_type' => 'status_changed', 'title' => 'Status promijenjen', 'description' => $description, 'metadata' => ['from' => $oldStatus->system_key, 'to' => $newStatus->system_key]]);
@@ -103,7 +103,7 @@ class AdministrativeCaseService
     public function setArchived(AdministrativeCase $case, User $user, bool $archive = true): AdministrativeCase
     {
         $case->update(['is_archived' => $archive, 'archived_at' => $archive ? now() : null]);
-        $case->activities()->create(['user_id' => $user->id, 'event_type' => $archive ? 'archived' : 'restored', 'title' => $archive ? 'Predmet arhiviran' : 'Predmet vraćen iz arhive']);
+        $case->activities()->create(['user_id' => $user->id, 'event_type' => $archive ? 'archived' : 'restored', 'title' => $archive ? 'Postupak arhiviran' : 'Postupak vraćen iz arhive']);
         app(ProjectActivityService::class)->record($case->project, $archive ? 'case_archived' : 'case_restored', ($archive ? 'Arhiviran postupak: ' : 'Postupak vraćen iz arhive: ').$case->name, $user, $case);
 
         return $case->refresh();
@@ -164,7 +164,7 @@ class AdministrativeCaseService
                 $itemCopy->save();
             }
 
-            $copy->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Predmet kopiran iz: '.$case->name]);
+            $copy->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Postupak kopiran iz: '.$case->name]);
             app(ProjectActivityService::class)->record($case->project, 'case_created', 'Kopiran postupak: '.$copy->name, $user, $copy);
 
             return $copy->refresh();
@@ -193,7 +193,7 @@ class AdministrativeCaseService
                 $copied++;
             }
             if ($copied > 0) {
-                $case->activities()->create(['user_id' => $user->id, 'event_type' => 'items_copied', 'title' => 'Kopirani zadaci iz predmeta: '.$source->name, 'description' => 'Broj kopiranih zadataka: '.$copied]);
+                $case->activities()->create(['user_id' => $user->id, 'event_type' => 'items_copied', 'title' => 'Kopirane stavke iz postupka: '.$source->name, 'description' => 'Broj kopiranih stavki: '.$copied]);
                 app(ProjectActivityService::class)->record($case->project, 'case_items_copied', 'Kopirane stavke ('.$copied.') iz postupka: '.$source->name, $user, $case);
             }
 
@@ -210,7 +210,7 @@ class AdministrativeCaseService
             // Prazne vrijednosti iz forme ('' ili null) preuzimaju vrijednost iz šablona.
             $caseTypeId = ($data['case_type_id'] ?? null) ?: $template->case_type_id;
             if ($caseTypeId === null) {
-                throw ValidationException::withMessages(['case_type_id' => 'Šablon nema definisanu vrstu predmeta — odaberite vrstu.']);
+                throw ValidationException::withMessages(['case_type_id' => 'Šablon nema definisanu vrstu postupka — odaberite vrstu.']);
             }
 
             $case = $this->create([
@@ -221,7 +221,7 @@ class AdministrativeCaseService
                 'description' => ($data['description'] ?? null) ?: $template->description,
             ], $user);
 
-            $case->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Predmet kreiran iz šablona: '.$template->name]);
+            $case->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Postupak kreiran iz šablona: '.$template->name]);
 
             foreach ($template->items as $templateItem) {
                 app(AdministrativeCaseItemService::class)->create($case, [

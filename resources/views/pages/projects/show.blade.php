@@ -94,13 +94,17 @@ new #[Title('Projekat')] class extends Component {
     {
         $itemToCase = $this->cases->flatMap(fn (AdministrativeCase $case) => $case->items->mapWithKeys(fn (AdministrativeCaseItem $item) => [$item->id => $case->id]));
 
-        return ProjectActivity::query()
+        $latest = ProjectActivity::query()
             ->where('project_id', $this->project->id)
             ->whereIn('subject_type', [(new AdministrativeCase)->getMorphClass(), (new AdministrativeCaseItem)->getMorphClass()])
             ->latest()->latest('id')->limit(500)
-            ->get(['id', 'subject_type', 'subject_id', 'title', 'created_at'])
+            ->get(['id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'metadata', 'created_at'])
             ->groupBy(fn (ProjectActivity $activity) => $activity->subject_type === (new AdministrativeCase)->getMorphClass() ? $activity->subject_id : ($itemToCase[$activity->subject_id] ?? 0))
             ->map->first();
+        // Korisnici samo za prikazane zapise (jedan upit) — potrebni za rečenicu "X je promijenio…".
+        (new Illuminate\Database\Eloquent\Collection($latest->values()->all()))->load('user:id,name,grammatical_gender');
+
+        return $latest;
     }
 
     #[Computed]
@@ -499,27 +503,27 @@ new #[Title('Projekat')] class extends Component {
                             {{-- Naziv postupka ima najmanje 14rem; kad nema mjesta, napredak/status/akcije prelaze u novi red umjesto da skrate naziv. --}}
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
                                 @if($canEditCases && $caseFilter === 'all')<span wire:sort:handle class="hidden cursor-grab text-zinc-300 hover:text-zinc-500 sm:block" title="Prevuci za promjenu redoslijeda"><flux:icon.bars-2 variant="mini" class="size-4" /></span>@endif
-                                <button type="button" x-on:click="toggle({{ $case->id }})" class="flex min-w-56 flex-1 basis-56 items-center gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" :aria-expanded="open.includes({{ $case->id }}).toString()">
+                                <button type="button" x-on:click="toggle({{ $case->id }})" class="flex min-w-48 flex-1 basis-48 items-center gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" :aria-expanded="open.includes({{ $case->id }}).toString()">
                                     <span class="flex size-11 shrink-0 items-center justify-center rounded-xl {{ $caseStatus->iconClass() }}"><flux:icon :name="$case->icon ?: 'document-text'" class="size-6" /></span>
                                     <span class="min-w-0">
                                         <span class="block truncate font-semibold">{{ $case->name }}</span>
                                         <span class="block truncate text-sm text-zinc-500">{{ $case->institution?->name ?? 'Bez institucije' }}</span>
-                                        @if($lastActivity)<span class="block truncate text-xs text-zinc-400 2xl:hidden" title="{{ $lastActivity->title }}">{{ $lastActivity->created_at->format('d.m.Y.') }} · {{ $lastActivity->title }}</span>@endif
+                                        @if($lastActivity)@php($lastSentence = App\Support\ActivityPresenter::sentence($lastActivity))<span class="block truncate text-xs text-zinc-400 2xl:hidden" title="{{ $lastSentence }}">{{ $lastActivity->created_at->format('d.m.Y.') }} · {{ $lastSentence }}</span>@endif
                                     </span>
                                 </button>
-                                <div class="w-40 shrink-0">
+                                <div class="w-36 shrink-0">
                                     <div class="text-sm"><strong>{{ $counts['done'] }} / {{ $counts['total'] }}</strong> {{ $itemsWord($counts['total']) }}</div>
                                     <div class="mt-1.5 flex items-center gap-2">
                                         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"><div class="h-full rounded-full bg-blue-600" style="width: {{ $counts['percent'] }}%"></div></div>
                                         <span class="w-9 text-right text-xs text-zinc-500">{{ $counts['percent'] }}%</span>
                                     </div>
                                 </div>
-                                <div class="shrink-0 sm:w-28"><flux:badge :color="$caseStatus->color()" size="sm">{{ $caseStatus->label() }}</flux:badge></div>
+                                <div class="shrink-0"><flux:badge :color="$caseStatus->color()" size="sm">{{ $caseStatus->label() }}</flux:badge></div>
                                 <div class="hidden w-44 shrink-0 border-l border-zinc-100 pl-4 text-xs text-zinc-500 2xl:block dark:border-zinc-800">
                                     <div>Posljednja aktivnost</div>
                                     @if($lastActivity)
                                         <div class="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{{ $lastActivity->created_at->format('d.m.Y.') }}</div>
-                                        <div class="truncate" title="{{ $lastActivity->title }}">{{ $lastActivity->title }}</div>
+                                        <div class="line-clamp-2" title="{{ App\Support\ActivityPresenter::sentence($lastActivity) }}">{{ App\Support\ActivityPresenter::sentence($lastActivity) }}</div>
                                     @else
                                         <div class="mt-0.5">–</div>
                                     @endif
@@ -545,36 +549,37 @@ new #[Title('Projekat')] class extends Component {
                             {{-- Tabela stavki --}}
                             <div x-show="open.includes({{ $case->id }})" x-cloak class="border-t border-zinc-100 dark:border-zinc-800">
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[900px] text-sm">
+                                    <table class="w-full min-w-[680px] text-sm 2xl:min-w-[900px]">
                                         <thead>
                                             <tr class="text-left text-xs text-zinc-500">
                                                 <th class="w-10 px-3 py-2.5 font-medium">#</th>
-                                                <th class="px-3 py-2.5 font-medium">Stavka</th>
+                                                <th class="sticky left-0 z-[1] bg-white px-3 py-2.5 font-medium dark:bg-zinc-900">Stavka</th>
                                                 <th class="px-3 py-2.5 font-medium">Status</th>
-                                                <th class="px-3 py-2.5 font-medium">Institucija / primalac</th>
+                                                <th class="hidden px-3 py-2.5 font-medium 2xl:table-cell">Institucija / primalac</th>
                                                 <th class="px-3 py-2.5 font-medium">Rok</th>
                                                 <th class="px-3 py-2.5 font-medium">Predaja</th>
                                                 <th class="px-3 py-2.5 font-medium">Odgovor</th>
                                                 <th class="px-3 py-2.5 font-medium">Dokumenti</th>
-                                                <th class="px-3 py-2.5 font-medium">Odgovorna osoba</th>
-                                                <th class="w-14 px-3 py-2.5 text-right font-medium">Akcije</th>
+                                                <th class="px-3 py-2.5 font-medium"><span class="2xl:hidden">Osoba</span><span class="hidden 2xl:inline">Odgovorna osoba</span></th>
+                                                <th class="sticky right-0 z-[1] w-14 bg-white px-3 py-2.5 text-right font-medium dark:bg-zinc-900">Akcije</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800" @if($canEditCase) wire:sort="sortItems" @endif>
                                             @forelse($case->items as $item)
                                                 @php($canEditItem = $canEditCase || ($item->responsible_user_id === auth()->id() && auth()->user()->role !== App\Enums\UserRole::Viewer))
                                                 @php($daysLeft = $item->daysUntilDue())
-                                                <tr wire:key="item-{{ $item->id }}" @if($canEditCase) wire:sort:item="{{ $item->id }}" @endif class="group hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40">
+                                                <tr wire:key="item-{{ $item->id }}" @if($canEditCase) wire:sort:item="{{ $item->id }}" @endif class="group hover:bg-zinc-50 dark:hover:bg-zinc-800">
                                                     <td class="px-3 py-2.5 text-zinc-500">
                                                         @if($canEditCase)<span wire:sort:handle class="cursor-grab" title="Prevuci za promjenu redoslijeda">{{ $loop->iteration }}</span>@else{{ $loop->iteration }}@endif
                                                     </td>
-                                                    <td class="max-w-64 px-3 py-2.5">
-                                                        <a href="{{ $item->url() }}" x-on:click="if (! $event.metaKey && ! $event.ctrlKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $dispatch('open-task', { id: {{ $item->id }} }) }" @class(['block truncate font-medium hover:text-blue-600', 'text-zinc-400 line-through' => $item->status === CaseItemStatus::Cancelled])>{{ $item->name }}</a>
+                                                    <td class="sticky left-0 z-[1] w-72 min-w-52 bg-white px-3 py-2.5 group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
+                                                        <a href="{{ $item->url() }}" title="{{ $item->name }}" x-on:click="if (! $event.metaKey && ! $event.ctrlKey && window.Livewire?.getByName?.('task-drawer')?.length) { $event.preventDefault(); $dispatch('open-task', { id: {{ $item->id }} }) }" @class(['block font-medium leading-snug break-words hover:text-blue-600', 'text-zinc-400 line-through' => $item->status === CaseItemStatus::Cancelled])>{{ $item->name }}</a>
+                                                        @if($recipient = $item->recipientName())<span class="mt-0.5 block truncate text-xs text-zinc-500 2xl:hidden" title="{{ $recipient }}">{{ $recipient }}</span>@endif
                                                     </td>
                                                     <td class="px-3 py-2.5">
                                                         <x-item-status-menu :item="$item" :editable="$canEditItem" />
                                                     </td>
-                                                    <td class="px-3 py-2.5 text-zinc-600 dark:text-zinc-300">{{ $item->recipientName() ?? '–' }}</td>
+                                                    <td class="hidden max-w-48 px-3 py-2.5 text-zinc-600 2xl:table-cell dark:text-zinc-300">{{ $item->recipientName() ?? '–' }}</td>
                                                     <td @class(['px-3 py-2.5 tabular-nums', 'font-semibold text-red-600 dark:text-red-400' => $item->isOverdue(), 'font-medium text-orange-600 dark:text-orange-400' => ! $item->isOverdue() && $item->isOpen() && $daysLeft !== null && $daysLeft <= $warningDays, 'text-zinc-600 dark:text-zinc-300' => ! $item->isOverdue() && ($daysLeft === null || $daysLeft > $warningDays || ! $item->isOpen())])>{{ $item->due_date?->format('d.m.Y.') ?? '–' }}</td>
                                                     <td class="px-3 py-2.5 tabular-nums text-zinc-600 dark:text-zinc-300">{{ $item->submitted_at?->format('d.m.Y.') ?? '–' }}</td>
                                                     <td class="px-3 py-2.5 tabular-nums text-zinc-600 dark:text-zinc-300">{{ $item->response_at?->format('d.m.Y.') ?? '–' }}</td>
@@ -585,26 +590,27 @@ new #[Title('Projekat')] class extends Component {
                                                     </td>
                                                     <td class="px-3 py-2.5">
                                                         @if($item->responsible)
-                                                            <span class="flex items-center gap-2 whitespace-nowrap"><span class="pf-avatar" aria-hidden="true">{{ $item->responsible->initials() }}</span>{{ $item->responsible->shortName() }}</span>
+                                                            <span class="flex items-center gap-2 whitespace-nowrap" title="{{ $item->responsible->name }}"><span class="pf-avatar" aria-hidden="true">{{ $item->responsible->initials() }}</span><span class="sr-only 2xl:not-sr-only">{{ $item->responsible->shortName() }}</span></span>
                                                         @else
                                                             <span class="text-zinc-400">–</span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-3 py-2.5 text-right">
-                                                        <div x-data="{ open: false }" class="relative inline-block text-left" x-on:keydown.escape="open = false">
-                                                            <button type="button" x-on:click="open = ! open" class="pf-icon-button text-lg leading-none" aria-haspopup="true" :aria-expanded="open.toString()" aria-label="Akcije za stavku {{ $item->name }}">⋯</button>
-                                                            <div x-show="open" x-cloak x-on:click.outside="open = false" x-on:click="open = false" class="pf-menu right-0" role="menu">
-                                                                <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item">{{ $canEditItem ? 'Uredi' : 'Otvori' }}</button>
-                                                                @if($canEditItem)
-                                                                    <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item">Promijeni status</button>
-                                                                    <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }}, section: 'dokumenti' })" class="pf-menu-item">Dodaj dokument</button>
-                                                                @endif
-                                                                @if($canEditCase)
-                                                                    <button type="button" role="menuitem" wire:click="duplicateItem({{ $item->id }})" class="pf-menu-item">Dupliciraj</button>
-                                                                    <button type="button" role="menuitem" wire:click="deleteItem({{ $item->id }})" wire:confirm="Obrisati stavku? Istorija i dokumenti ostaju sačuvani." class="pf-menu-item text-red-600">Obriši</button>
-                                                                @endif
-                                                            </div>
-                                                        </div>
+                                                    <td class="sticky right-0 z-[1] bg-white px-3 py-2.5 text-right group-hover:bg-zinc-50 dark:bg-zinc-900 dark:group-hover:bg-zinc-800">
+                                                        <x-popover-menu align="end">
+                                                            <x-slot:trigger>
+                                                                <button type="button" class="pf-icon-button text-lg leading-none" aria-haspopup="menu" :aria-expanded="open.toString()" aria-label="Akcije za stavku {{ $item->name }}">⋯</button>
+                                                            </x-slot:trigger>
+                                                            <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item"><flux:icon.pencil-square variant="micro" class="size-4 text-zinc-400" />{{ $canEditItem ? 'Uredi' : 'Otvori' }}</button>
+                                                            @if($canEditItem)
+                                                                <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }} })" class="pf-menu-item"><flux:icon.arrow-path variant="micro" class="size-4 text-zinc-400" />Promijeni status</button>
+                                                                <button type="button" role="menuitem" x-on:click="$dispatch('open-task', { id: {{ $item->id }}, section: 'dokumenti' })" class="pf-menu-item"><flux:icon.paper-clip variant="micro" class="size-4 text-zinc-400" />Dodaj dokument</button>
+                                                            @endif
+                                                            @if($canEditCase)
+                                                                <button type="button" role="menuitem" wire:click="duplicateItem({{ $item->id }})" class="pf-menu-item"><flux:icon.document-duplicate variant="micro" class="size-4 text-zinc-400" />Dupliciraj</button>
+                                                                <div class="my-1 border-t border-zinc-100 dark:border-zinc-800"></div>
+                                                                <button type="button" role="menuitem" wire:click="deleteItem({{ $item->id }})" wire:confirm="Obrisati stavku? Istorija i dokumenti ostaju sačuvani." class="pf-menu-item text-red-600 dark:text-red-400"><flux:icon.trash variant="micro" class="size-4" />Obriši</button>
+                                                            @endif
+                                                        </x-popover-menu>
                                                     </td>
                                                 </tr>
                                             @empty

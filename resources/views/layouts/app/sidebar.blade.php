@@ -16,7 +16,7 @@
     <flux:sidebar.nav>
         <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.*', 'tasks.*') && ! $activeStatusFilter" wire:navigate>Projekti</flux:sidebar.item>
         <flux:sidebar.item icon="clipboard-document-check" :href="route('my-tasks.index')" :current="request()->routeIs('my-tasks.*')" :badge="$myOpenItems ?: null" wire:navigate>Moje stavke</flux:sidebar.item>
-        <flux:sidebar.item icon="cog-6-tooth" :href="route('profile.edit')" :current="request()->routeIs('profile.*', 'appearance.*', 'security.*', 'categories.*', 'case-catalogs.*', 'users.*')" wire:navigate>Postavke</flux:sidebar.item>
+        <flux:sidebar.item icon="cog-6-tooth" :href="route('profile.edit')" :current="request()->routeIs('profile.*', 'appearance.*', 'security.*', 'categories.*', 'case-catalogs.*', 'users.*', 'notification-settings.*')" wire:navigate>Postavke</flux:sidebar.item>
     </flux:sidebar.nav>
 
     {{-- Filteri projekata po statusu (vežu se na listu /projekti) --}}

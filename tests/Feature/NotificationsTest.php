@@ -153,6 +153,29 @@ class NotificationsTest extends TestCase
             ->assertRedirect(route('notifications.index'));
     }
 
+    public function test_user_can_mute_kinds_and_muted_kind_is_not_sent(): void
+    {
+        $this->actingAs($this->member);
+        $kept = collect(NotificationKind::cases())->reject(fn ($kind) => $kind === NotificationKind::StatusChanged)->map->value->values()->all();
+
+        Livewire::test('pages::settings.notifications')
+            ->assertSee('Promijenjen je status moje stavke')
+            ->set('kinds', $kept)
+            ->set('daily_digest', true)->set('digest_hour', 8)
+            ->call('save')->assertHasNoErrors();
+
+        $setting = $this->member->refresh()->notificationSettingFor();
+        $this->assertSame([NotificationKind::StatusChanged->value], $setting->muted_kinds);
+        $this->assertTrue($setting->daily_digest);
+        $this->assertSame(8, $setting->digest_hour);
+
+        Notification::fake();
+        $this->actingAs($this->manager);
+        $service = app(AdministrativeCaseItemService::class);
+        $service->changeStatus($this->item(), CaseItemStatus::Submitted, $this->manager);
+        Notification::assertNotSentTo($this->member, WorkspaceNotification::class);
+    }
+
     public function test_user_cannot_open_someone_elses_notification(): void
     {
         $this->manager->notify(new WorkspaceNotification(NotificationKind::StatusChanged->value, 'Tuđa', route('projects.index')));

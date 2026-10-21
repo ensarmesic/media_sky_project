@@ -36,10 +36,10 @@ class DailyDigestNotification extends Notification implements ShouldQueue
             $message->line('Nema prekoračenih rokova.');
         } else {
             foreach ($this->overdueCases as $case) {
-                $message->line('- [Predmet] '.$case);
+                $message->line('- [Postupak] '.$case);
             }
             foreach ($this->overdueTasks as $task) {
-                $message->line('- [Zadatak] '.$task);
+                $message->line('- [Stavka] '.$task);
             }
         }
 

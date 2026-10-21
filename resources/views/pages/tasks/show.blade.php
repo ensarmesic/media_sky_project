@@ -5,8 +5,8 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-/** Direktan link na zadatak: /zadaci/{id}. */
-new #[Title('Zadatak')] class extends Component {
+/** Direktan link na stavku: /stavke/{id}. */
+new #[Title('Stavka')] class extends Component {
     public AdministrativeCaseItem $item;
 
     public function mount(AdministrativeCaseItem $item): void

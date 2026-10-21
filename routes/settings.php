@@ -9,6 +9,7 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('settings/categories', 'pages::settings.categories')->name('categories.index');
     Route::livewire('settings/case-catalogs', 'pages::settings.case-catalogs')->name('case-catalogs.index');
     Route::livewire('settings/users', 'pages::settings.users')->name('users.index');
+    Route::livewire('settings/obavijesti', 'pages::settings.notifications')->name('notification-settings.edit');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
