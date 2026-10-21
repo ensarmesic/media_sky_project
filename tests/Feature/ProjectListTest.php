@@ -70,6 +70,26 @@ class ProjectListTest extends TestCase
             ->assertDontSee('Daleki rok');
     }
 
+    public function test_attention_boundaries_cancelled_archived_and_config(): void
+    {
+        $project = $this->project('FTTH Banovići');
+        $case = $this->case($project);
+        $this->item($case, 'Čeka 10 dana', CaseItemStatus::WaitingResponse, ['submitted_at' => today()->subDays(10)]);
+        $this->item($case, 'Čeka 9 dana', CaseItemStatus::WaitingResponse, ['submitted_at' => today()->subDays(9)]);
+        $this->item($case, 'Rok za 5 dana', CaseItemStatus::InPreparation, ['due_date' => today()->addDays(5)]);
+        $this->item($case, 'Rok za 6 dana', CaseItemStatus::InPreparation, ['due_date' => today()->addDays(6)]);
+        $this->item($case, 'Otkazana kasni', CaseItemStatus::Cancelled, ['due_date' => today()->subDays(3)]);
+        $archived = $this->case($project);
+        $archived->update(['is_archived' => true]);
+        $this->item($archived, 'Arhivirani postupak', CaseItemStatus::NotStarted, ['due_date' => today()->subDay()]);
+
+        $names = fn () => app(AttentionService::class)->forProject($project->id)->pluck('item.name')->all();
+        $this->assertSame(['Čeka 10 dana', 'Rok za 5 dana'], $names());
+
+        config(['projectflow.attention.waiting_days' => 9, 'projectflow.attention.due_within_days' => 6]);
+        $this->assertSame(['Čeka 10 dana', 'Čeka 9 dana', 'Rok za 5 dana', 'Rok za 6 dana'], $names());
+    }
+
     public function test_status_filter_search_and_sort_via_url(): void
     {
         $this->project('Bravo u toku', ['status' => ProjectStatus::InProgress, 'planned_end_date' => '2027-01-01']);

@@ -38,10 +38,10 @@ class SecurityTest extends TestCase
 
         $response->assertOk();
 
-        $response->assertSee('Passkeys');
-        $response->assertSee('No passkeys yet');
+        $response->assertSee('Passkeyji');
+        $response->assertSee('Još nema passkeyja');
         $response->assertSee('Dvofaktorska autentifikacija');
-        $response->assertSee('Enable 2FA');
+        $response->assertSee('Uključi 2FA');
     }
 
     public function test_security_settings_page_requires_password_confirmation_when_enabled(): void
@@ -65,8 +65,8 @@ class SecurityTest extends TestCase
             ->get(route('security.edit'))
             ->assertOk()
             ->assertSee('Promijeni lozinku')
-            ->assertDontSee('Manage your passkeys for passwordless sign-in')
-            ->assertDontSee('Add a passkey to sign in without a password')
+            ->assertDontSee('Upravljajte passkeyjima za prijavu bez lozinke')
+            ->assertDontSee('Dodajte passkey za prijavu bez lozinke')
             ->assertDontSee('Dvofaktorska autentifikacija');
     }
 
