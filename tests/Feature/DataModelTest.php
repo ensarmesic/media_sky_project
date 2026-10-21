@@ -41,6 +41,29 @@ class DataModelTest extends TestCase
         $this->assertNull(Project::factory()->create()->administrativeProgress());
     }
 
+    public function test_project_progress_gives_each_case_an_equal_share(): void
+    {
+        [$project, $case, $user] = $this->projectWithCase();
+        $addCase = fn (array $statuses, bool $archived = false) => tap(AdministrativeCase::create([...$case->only(['project_id', 'case_type_id', 'case_status_id', 'responsible_user_id', 'started_at', 'created_by']), 'name' => 'Postupak', 'is_archived' => $archived]),
+            fn (AdministrativeCase $c) => collect($statuses)->each(fn (CaseItemStatus $s) => $c->items()->create(['name' => 'Stavka', 'status' => $s, 'created_by' => $user->id])));
+
+        // 3 završena postupka (različit broj stavki) + 1 bez ijedne završene stavke = 75 %, ne 93 %.
+        foreach (range(1, 10) as $i) {
+            $case->items()->create(['name' => 'Stavka', 'status' => CaseItemStatus::Completed, 'created_by' => $user->id]);
+        }
+        $addCase([CaseItemStatus::Completed, CaseItemStatus::Completed]);
+        $addCase([CaseItemStatus::Completed]);
+        $addCase([CaseItemStatus::NotStarted]);
+        $addCase([CaseItemStatus::NotStarted], archived: true);
+        $this->assertSame(75, $project->fresh()->administrativeProgress());
+
+        // Postupak bez stavki je neurađen (3 od 5 = 60 %); djelimično urađen nosi svoj udio (+ 1/2 od 1/6).
+        $addCase([]);
+        $this->assertSame(60, $project->fresh()->administrativeProgress());
+        $addCase([CaseItemStatus::Completed, CaseItemStatus::NotStarted]);
+        $this->assertSame(58, $project->fresh()->administrativeProgress());
+    }
+
     public function test_status_transitions_set_submission_and_response_dates(): void
     {
         [, $case, $user] = $this->projectWithCase();

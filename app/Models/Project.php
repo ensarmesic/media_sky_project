@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\CaseItemStatus;
 use App\Enums\ProjectStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProjectFactory;
@@ -162,24 +161,20 @@ class Project extends Model
     }
 
     /**
-     * Administrativni napredak = završene stavke / sve stavke (bez otkazanih), u %.
-     * Null ako projekat još nema stavki. Koristi brojače (withCount) ili učitane relacije ako postoje.
+     * Administrativni napredak u %: svaki (nearhivirani) postupak nosi jednak dio, a unutar postupka
+     * se gleda udio završenih stavki. Npr. 3 od 4 završena postupka, a četvrti bez ijedne završene stavke = 75 %.
+     * Null ako projekat još nema postupaka. Koristi učitane postupke (i njihove brojače) ako postoje.
      */
     public function administrativeProgress(): ?int
     {
-        if (array_key_exists('items_total_count', $this->attributes) && array_key_exists('items_done_count', $this->attributes)) {
-            $total = (int) $this->attributes['items_total_count'];
-            $done = (int) $this->attributes['items_done_count'];
-        } else {
-            $items = $this->relationLoaded('administrativeCases')
-                ? $this->administrativeCases->where('is_archived', false)->flatMap->items
-                : $this->items()->where('administrative_cases.is_archived', false)->get();
-            $items = $items->where('is_active', true)->reject(fn (AdministrativeCaseItem $item) => $item->status === CaseItemStatus::Cancelled);
-            $total = $items->count();
-            $done = $items->where('status', CaseItemStatus::Completed)->count();
+        $cases = ($this->relationLoaded('administrativeCases') ? $this->administrativeCases : $this->administrativeCases()->with('items')->get())
+            ->where('is_archived', false);
+
+        if ($cases->isEmpty()) {
+            return null;
         }
 
-        return $total === 0 ? null : (int) round($done / $total * 100);
+        return (int) round($cases->avg(fn (AdministrativeCase $case) => $case->completionRatio()) * 100);
     }
 
     /** Zadržano zbog postojećih poziva (PDF izvještaj). */

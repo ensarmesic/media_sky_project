@@ -37,17 +37,14 @@ new #[Title('Projekti')] class extends Component {
     {
         Gate::authorize('viewAny', Project::class);
         $status = ProjectStatus::tryFrom($this->status);
-        $itemCount = fn (string $alias, ?CaseItemStatus $only) => [
-            "items as {$alias}" => fn (Builder $query) => $query
-                ->where('administrative_case_items.is_active', true)
-                ->where('administrative_cases.is_archived', false)
-                ->when($only, fn (Builder $q) => $q->where('administrative_case_items.status', $only->value),
-                    fn (Builder $q) => $q->where('administrative_case_items.status', '!=', CaseItemStatus::Cancelled->value)),
-        ];
+        // Brojači stavki po postupku — napredak projekta je prosjek postupaka (Project::administrativeProgress).
+        $cases = fn ($query) => $query->select('id', 'project_id', 'is_archived')->where('is_archived', false)->withCount([
+            'items as items_total_count' => fn (Builder $q) => $q->where('is_active', true)->where('status', '!=', CaseItemStatus::Cancelled->value),
+            'items as items_done_count' => fn (Builder $q) => $q->where('is_active', true)->where('status', CaseItemStatus::Completed->value),
+        ]);
 
         return Project::visibleTo(auth()->user())
-            ->with(['members:id,name', 'category:id,name'])
-            ->withCount([...$itemCount('items_total_count', null), ...$itemCount('items_done_count', CaseItemStatus::Completed)])
+            ->with(['members:id,name', 'category:id,name', 'administrativeCases' => $cases])
             ->withMax('activities', 'created_at')
             ->when($status, fn (Builder $query) => $query->whereIn('status', $status->filterValues()),
                 fn (Builder $query) => $query->where('status', '!=', ProjectStatus::Archived->value))

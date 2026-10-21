@@ -167,6 +167,19 @@ class AdministrativeCase extends Model
         return ['done' => $done, 'total' => $items->count(), 'percent' => $items->isEmpty() ? 0 : (int) round($done / $items->count() * 100)];
     }
 
+    /** Udio završenih stavki (0–1) za napredak projekta; postupak bez stavki je 0. Koristi brojače (withCount) ako postoje. */
+    public function completionRatio(): float
+    {
+        if (array_key_exists('items_total_count', $this->attributes) && array_key_exists('items_done_count', $this->attributes)) {
+            $total = (int) $this->attributes['items_total_count'];
+            $done = (int) $this->attributes['items_done_count'];
+        } else {
+            ['done' => $done, 'total' => $total] = $this->itemCounts();
+        }
+
+        return $total === 0 ? 0.0 : $done / $total;
+    }
+
     /** @return MorphMany<Link, $this> */
     public function links(): MorphMany
     {
