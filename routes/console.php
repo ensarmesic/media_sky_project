@@ -26,15 +26,21 @@ $openItems = fn (): Builder => AdministrativeCaseItem::query()
     ->whereHas('administrativeCase', fn (Builder $query) => $query->where('is_archived', false));
 
 Artisan::command('items:send-deadline-reminders', function (NotificationDispatchService $dispatcher) use ($openItems) {
-    $dueSoonDays = (int) config('projectflow.reminders.due_soon_days', 7);
+    // Plan: obavijest kad je rok sutra (konfigurabilno) ili kad je istekao; svaka samo jednom po roku.
+    $daysBefore = max(0, (int) config('projectflow.reminders.deadline_days_before', 1));
 
     $openItems()
         ->whereNull('deadline_reminded_at')
         ->whereDate('due_date', '>=', today())
-        ->whereDate('due_date', '<=', today()->addDays($dueSoonDays))
+        ->whereDate('due_date', '<=', today()->addDays($daysBefore))
         ->lazyById()
         ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
-            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineSoon, 'Približava se rok zadatka: '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
+            $when = match (true) {
+                $item->due_date->isToday() => 'Rok ističe danas',
+                $item->due_date->isTomorrow() => 'Rok je sutra',
+                default => 'Rok je '.$item->due_date->format('d.m.Y.'),
+            };
+            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineSoon, $when.': '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
             $item->update(['deadline_reminded_at' => now()]);
         });
 
@@ -43,10 +49,10 @@ Artisan::command('items:send-deadline-reminders', function (NotificationDispatch
         ->whereDate('due_date', '<', today())
         ->lazyById()
         ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
-            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineOverdue, 'Zadatak je prekoračio rok: '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
+            $dispatcher->dispatch([$item->responsible], NotificationKind::DeadlineOverdue, 'Rok je istekao: '.$item->name, $item->url(), $item->due_date->format('Y-m-d'));
             $item->update(['overdue_reminded_at' => now()]);
         });
-})->purpose('Pošalji podsjetnike i upozorenja za rokove zadataka');
+})->purpose('Pošalji obavijesti za rokove stavki (rok sutra, rok istekao)');
 
 Artisan::command('cases:send-deadline-reminders', function (NotificationDispatchService $dispatcher) {
     AdministrativeCase::query()
@@ -59,7 +65,7 @@ Artisan::command('cases:send-deadline-reminders', function (NotificationDispatch
         ->lazyById()
         ->filter(fn (AdministrativeCase $case) => $case->response_due_at->lte(today()->addDays($case->reminder_days_before)))
         ->each(function (AdministrativeCase $case) use ($dispatcher) {
-            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineSoon, 'Približava se rok predmeta: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
+            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineSoon, 'Približava se rok postupka: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
             $case->update(['deadline_reminded_at' => now()]);
         });
 
@@ -71,28 +77,32 @@ Artisan::command('cases:send-deadline-reminders', function (NotificationDispatch
         ->whereDate('response_due_at', '<', today())
         ->lazyById()
         ->each(function (AdministrativeCase $case) use ($dispatcher) {
-            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineOverdue, 'Predmet je prekoračio rok: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
+            $dispatcher->dispatch([$case->responsible], NotificationKind::DeadlineOverdue, 'Rok postupka je istekao: '.$case->name, $case->url(), $case->response_due_at->format('Y-m-d'));
             $case->update(['overdue_reminded_at' => now()]);
         });
-})->purpose('Pošalji podsjetnike i upozorenja za rokove predmeta');
+})->purpose('Pošalji podsjetnike i upozorenja za rokove postupaka');
 
 Artisan::command('items:send-waiting-reminders', function (NotificationDispatchService $dispatcher) {
+    // Stavka čeka odgovor duže od N dana (plan: 10); podsjetnik se ponavlja svakih N dana dok čeka.
+    $defaultInterval = max(1, (int) config('projectflow.reminders.waiting_too_long_days', 10));
+
     AdministrativeCaseItem::query()
         ->with(['administrativeCase.responsible', 'responsible'])
         ->where('is_active', true)
         ->where('status', CaseItemStatus::WaitingResponse->value)
-        ->whereNotNull('response_reminder_interval')
         ->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))
         ->lazyById()
         // Interval se računa od posljednjeg podsjetnika, odnosno od početka čekanja.
         ->filter(fn (AdministrativeCaseItem $item) => ($item->response_reminded_at ?? $item->submitted_at ?? $item->updated_at)
-            ->lte(now()->subDays(max(1, $item->response_reminder_interval))))
+            ->lte(now()->subDays(max(1, $item->response_reminder_interval ?? $defaultInterval))))
         ->each(function (AdministrativeCaseItem $item) use ($dispatcher) {
             $recipients = collect([$item->responsible, $item->administrativeCase->responsible])->filter()->unique('id')->all();
-            $dispatcher->dispatch($recipients, NotificationKind::WaitingTooLong, 'Zadatak predugo čeka odgovor: '.$item->name, $item->url(), $item->due_date?->format('Y-m-d'));
+            $days = $item->daysWaiting();
+            $title = $days !== null ? 'Stavka čeka odgovor '.$days.' dana: '.$item->name : 'Stavka predugo čeka odgovor: '.$item->name;
+            $dispatcher->dispatch($recipients, NotificationKind::WaitingTooLong, $title, $item->url(), $item->due_date?->format('Y-m-d'));
             $item->update(['response_reminded_at' => now()]);
         });
-})->purpose('Pošalji periodične podsjetnike za zadatke koji čekaju odgovor');
+})->purpose('Pošalji podsjetnike za stavke koje predugo čekaju odgovor');
 
 Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uključenim sažetkom, bez obzira na odabrani sat}', function () use ($openItems) {
     $waitingLimit = (int) config('projectflow.reminders.waiting_too_long_days', 14);

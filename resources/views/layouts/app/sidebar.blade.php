@@ -3,7 +3,6 @@
 <head>@include('partials.head')</head>
 <body class="min-h-screen bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
 @php($user = auth()->user())
-@php($unreadNotifications = $user->unreadNotifications()->count())
 @php($myOpenItems = $user->assignedItems()->open()->whereHas('administrativeCase', fn ($query) => $query->where('is_archived', false))->count())
 @php($statusCounts = App\Models\Project::visibleTo($user)->toBase()->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status'))
 @php($activeStatusFilter = request()->routeIs('projects.index') ? request('status', '') : null)
@@ -55,13 +54,7 @@
 
     <flux:spacer />
 
-    <a href="{{ route('notifications.index') }}" wire:navigate class="relative mr-2 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        aria-label="Obavijesti{{ $unreadNotifications ? ' ('.$unreadNotifications.' nepročitanih)' : '' }}">
-        <flux:icon.bell class="size-5" />
-        @if($unreadNotifications)
-            <span class="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">{{ $unreadNotifications > 99 ? '99+' : $unreadNotifications }}</span>
-        @endif
-    </a>
+    <livewire:notification-bell />
 
     <flux:dropdown position="bottom" align="end">
         <button type="button" class="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800" data-test="sidebar-menu-button">

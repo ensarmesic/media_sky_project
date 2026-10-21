@@ -64,9 +64,9 @@ class AdministrativeCaseService
                 $description = $oldStatus->name.' → '.$newStatus->name;
                 $case->activities()->create(['user_id' => $user->id, 'event_type' => 'status_changed', 'title' => 'Status promijenjen', 'description' => $description, 'metadata' => ['from' => $oldStatus->system_key, 'to' => $newStatus->system_key]]);
                 $notificationTitle = match ($newStatus->system_key) {
-                    'supplement_required' => 'Zatražena dopuna za predmet: '.$case->name,
-                    'resolved' => 'Zaprimljen odgovor / predmet završen: '.$case->name,
-                    default => 'Promijenjen status predmeta: '.$case->name,
+                    'supplement_required' => 'Zatražena dopuna za postupak: '.$case->name,
+                    'resolved' => 'Zaprimljen odgovor / postupak završen: '.$case->name,
+                    default => 'Promijenjen status postupka: '.$case->name,
                 };
                 app(NotificationDispatchService::class)->dispatch(
                     [$case->responsible],

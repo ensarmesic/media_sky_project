@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Forms;
 
+use App\Enums\NotificationKind;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Models\User;
+use App\Services\NotificationDispatchService;
 use App\Services\ProjectActivityService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +91,8 @@ class ProjectForm extends Form
             }
             $members = collect($memberIds)->mapWithKeys(fn ($id) => [$id => ['role' => 'member']]);
             $members->put((int) $data['responsible_user_id'], ['role' => 'manager']);
-            $project->members()->sync($members->all());
+            $attached = $project->members()->sync($members->all())['attached'];
+            app(NotificationDispatchService::class)->dispatch(User::whereKey($attached)->get(), NotificationKind::ProjectMember, 'Dodani ste na projekat: '.$project->name, route('projects.show', $project));
             app(ProjectActivityService::class)->record($project, $created ? 'project_created' : 'project_updated', $created ? 'Projekat kreiran' : 'Podaci projekta ažurirani', Auth::user(), $project);
 
             return $project->refresh();

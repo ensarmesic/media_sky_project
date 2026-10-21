@@ -32,4 +32,13 @@ class NotificationDispatchService
 
         return $sent;
     }
+
+    /** Adresa iz obavijesti, samo ako vodi unutar aplikacije (zaštita od preusmjeravanja na tuđe stranice). */
+    public static function safeUrl(?string $url): string
+    {
+        $base = rtrim(url('/'), '/');
+        $internal = $url !== null && ($url === $base || str_starts_with($url, $base.'/') || (str_starts_with($url, '/') && ! str_starts_with($url, '//')));
+
+        return $internal ? $url : route('notifications.index');
+    }
 }
