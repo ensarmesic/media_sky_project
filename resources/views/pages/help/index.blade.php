@@ -8,7 +8,7 @@ new #[Title('Pomoć')] class extends Component {}; ?>
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6">
     <div>
         <flux:heading size="xl" level="1">Pomoć</flux:heading>
-        <flux:subheading class="mt-1">Kratki vodič kroz ProjectFlow</flux:subheading>
+        <flux:subheading class="mt-1">Kratki vodič kroz {{ config('app.name') }}</flux:subheading>
     </div>
 
     @foreach([

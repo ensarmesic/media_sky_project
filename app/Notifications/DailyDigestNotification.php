@@ -61,7 +61,7 @@ class DailyDigestNotification extends Notification implements ShouldQueue
             }
         }
 
-        return $message->action('Otvori ProjectFlow', route('my-tasks.index'))
+        return $message->action('Otvori '.config('app.name'), route('my-tasks.index'))
             ->salutation(config('app.name'));
     }
 }

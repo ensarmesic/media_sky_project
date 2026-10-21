@@ -1,6 +1,2 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" {{ $attributes }}>
-    <path d="M8 6h8" />
-    <path d="M6 10h12" />
-    <path d="M8 14h8" />
-    <path d="M10 18h4" />
-</svg>
+{{-- Znak Media Sky (četvrtine kruga i tačkice iz loga). --}}
+<img src="{{ asset('images/media-sky-icon.png') }}" alt="" width="133" height="133" {{ $attributes->merge(['class' => 'object-contain']) }}>
