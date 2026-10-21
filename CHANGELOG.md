@@ -37,13 +37,20 @@ Aplikacija (ranije ProjectFlow) preuređena prema planu iz `PROJECTFLOW_TASKS.md
 - Obavijesti idu kroz queue: potreban je `php artisan queue:work` (ili supervisor) i `php artisan schedule:work` / cron za dnevne podsjetnike.
 - Logo u PDF izvještaju traži PHP ekstenziju GD; bez nje se ispisuje tekstualni naziv.
 
-### Produkcija, backup i izvještaji (Taskovi 13–17)
-- **Baza:** SQLite konekcija koristi WAL, `busy_timeout` i `synchronous=NORMAL`; pripremljene su MySQL/MariaDB postavke i zaseban MySQL CI job, uz smjernice za izbor i migraciju baze.
+### Produkcija, backup i izvještaji (Taskovi 12–17)
+- **Čišćenje (Task 12):** uklonjeni nekorišteni fajlovi starter kita; prijava bez passkey dugmeta.
+- **Baza (Task 13, u pripremi):** lokalno ostaje SQLite bez izmjena. Prelazak na MySQL je pripremljen, ali se radi tek na produkcijskom serveru: MySQL blok u `.env.example`, komanda `php artisan app:copy-database sqlite mysql` za prenos podataka, dužine polja usklađene s MySQL kolonama.
 - **Queue i scheduler:** dodani su zapisi posljednjeg rada, upozorenje administratoru, stranica **Stanje sistema**, upravljanje neuspjelim poslovima i komanda `php artisan app:health`; produkcijska dokumentacija sadrži Supervisor, cron i Windows upute.
 - **Backup:** dnevni backup baze i privatnih dokumenata, raspored čišćenja i nadzora, politika čuvanja, obavijesti administratorima, ručno pokretanje kroz queue i postupak vraćanja iz backupa.
 - **Excel izvoz:** projekt se izvozi u formatirani XLSX s listovima Postupci, Stavke i Dokumenti, uz autorizaciju, aktivne filtere, Excel datume i istaknute statuse/kašnjenja.
 - **Institucije:** nova lista institucija s pokazateljima pažnje i pretragom te detalj s kontaktnim podacima, otvorenim stavkama grupisanim po stanju, brzom promjenom statusa, kopiranjem liste i XLSX izvozom. Podaci su ograničeni na projekte koje korisnik smije vidjeti i učitavaju se bez N+1 upita.
 - Slobodno uneseni primaoci iz starijih stavki nisu automatski povezivani s institucijama; postojeći tekst ostaje sačuvan dok se ne odobri mapiranje.
+
+### Stabilnost i brzina (21.10.2026.)
+- **Napredak projekta** je prosjek postupaka: svaki postupak nosi jednak dio, unutar postupka se gleda udio završenih stavki (3 od 4 završena postupka = 75 %). Postupak bez stavki računa se kao neurađen; arhivirani postupci i otkazane stavke se ne računaju.
+- **Zaštita baze:** testovi se sami zaustave ako bi radili nad pravom bazom (npr. kad je konfiguracija keširana).
+- **`start.ps1`:** lokalno pokretanje servera s OPcache-om (~4x brže stranice), queue workera i schedulera; rute i eventi se keširaju svježe pri svakom pokretanju, konfiguracija nikad.
+- CI: uklonjen prazan Unit testsuite koji je rušio GitHub Actions.
 
 ## Prijedlog sljedećih koraka
 1. **Referentni dizajn:** `docs/dizajn-projekat.png` ne postoji u repozitoriju. Kad se doda, uraditi vizuelno poređenje razmaka i veličina.
