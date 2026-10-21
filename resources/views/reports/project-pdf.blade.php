@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><style>body{font-family:DejaVu Sans,sans-serif;color:#18181b;font-size:11px}h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;margin:22px 0 8px;border-bottom:1px solid #d4d4d8;padding-bottom:5px}h3{font-size:12px;margin:16px 0 4px}.muted{color:#71717a}.meta{width:100%;border-collapse:collapse}.meta td{padding:4px 8px 4px 0;vertical-align:top}.list{width:100%;border-collapse:collapse}.list th,.list td{text-align:left;border-bottom:1px solid #e4e4e7;padding:5px 4px}.list th{background:#f4f4f5}.danger{color:#b91c1c}.done{color:#71717a;text-decoration:line-through}.footer{margin-top:28px;font-size:9px;color:#71717a}</style></head>
 <body>
     @php($progress = $project->administrativeProgressPercentage())
-    <table style="width:100%;margin-bottom:14px"><tr><td>@if(extension_loaded('gd'))<img src="{{ public_path('images/media-sky-logo.png') }}" alt="Media Sky" style="height:42px">@else<strong style="font-size:16px;color:#1d6fb8">Media Sky</strong> <span style="color:#6cb33f">Telekomunikacije</span>@endif</td><td style="text-align:right" class="muted">{{ config('app.name') }}</td></tr></table>
+    <table style="width:100%;margin-bottom:14px"><tr><td>@if(extension_loaded('gd'))<img src="{{ public_path('img/logo-light.png') }}" alt="Media Sky" style="height:42px">@else<strong style="font-size:16px;color:#1d6fb8">Media Sky</strong> <span style="color:#6cb33f">Telekomunikacije</span>@endif</td><td style="text-align:right" class="muted">{{ config('app.name') }}</td></tr></table>
     <h1>{{ $project->name }}</h1><div class="muted">{{ $project->code }} · Izvještaj generisan {{ now()->format('d.m.Y. H:i') }}</div>
 
     <h2>Osnovne informacije</h2>

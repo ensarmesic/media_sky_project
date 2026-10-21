@@ -69,6 +69,12 @@ select:focus[data-flux-control] {
     @apply size-4;
 } */
 
+/* Privremeno: svijetli logo prilagođen tamnoj temi dok ne postoji public/img/logo-dark.png (vidi <x-brand-logo>). */
+.logo-dark-fallback {
+    filter: invert(1) hue-rotate(180deg);
+    mix-blend-mode: screen;
+}
+
 /* Formatirani korisnički tekst (opis zadatka, komentari) — App\Support\RichText */
 .rich-text {
     @apply text-sm leading-relaxed break-words;
