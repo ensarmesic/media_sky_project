@@ -1,43 +1,27 @@
-# ProjectFlow
+# Media Sky Project
 
-Interna Laravel + Livewire aplikacija za upravljanje projektima, administrativnim predmetima, zadacima, rokovima, dokumentnim referencama i izvještajima.
+Interna aplikacija Media Sky Telekomunikacije za praćenje projekata i administrativnih postupaka: postupci i stavke s rokovima, predajom i odgovorima institucija, dokumenti s verzijama, komentari, historija promjena, obavijesti i PDF izvještaji. UI je na bosanskom jeziku.
 
 ## Dokumentacija
 
 - [Instalacija i ažuriranje](docs/INSTALLATION.md)
 - [Produkcijski rad, queue, scheduler i backup](docs/PRODUCTION.md)
 - [Priprema integracije s protokolom](docs/PROTOCOL_INTEGRATION.md)
+- [Changelog](CHANGELOG.md)
 
 ## Tehnologije
 
-Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4, PostgreSQL i Vite. Aplikacija nema odvojeni SPA frontend.
+Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4 i Vite, na PHP 8.4. Baza je trenutno SQLite; za produkciju je planiran prelazak na MySQL. Aplikacija nema odvojeni SPA frontend.
 
-## Introduction
+## Brzi start (lokalno)
 
-Our Laravel + [Livewire](https://livewire.laravel.com) starter kit provides a robust, modern starting point for building Laravel applications with a Livewire frontend.
+```bash
+composer setup     # instalacija, .env, ključ, migracije, npm build
+composer run dev   # server, queue, logovi i Vite zajedno
+```
 
-Livewire is a powerful way of building dynamic, reactive, frontend UIs using just PHP. It's a great fit for teams that primarily use Blade templates and are looking for a simpler alternative to JavaScript-driven SPA frameworks like React and Vue.
+Provjere prije commita (iste kao u CI-ju): `composer ci:check` — Pint, PHPStan (nivo 7) i testovi.
 
-This Livewire starter kit utilizes Livewire 4, TypeScript, Tailwind, and the [Flux UI](https://fluxui.dev) component library.
+## Licenca
 
-If you are looking for the alternate configurations of this starter kit, they can be found in the following branches:
-
-- [workos](https://github.com/laravel/livewire-starter-kit/tree/workos) - if WorkOS is selected for authentication
-
-## Official Documentation
-
-Documentation for all Laravel starter kits can be found on the [Laravel website](https://laravel.com/docs/starter-kits).
-
-## Contributing
-
-Thank you for considering contributing to our starter kit! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-All contributions to the Starter Kits from now on should be made through [Maestro](https://github.com/laravel/maestro).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## License
-
-The Laravel + Livewire starter kit is open-sourced software licensed under the MIT license.
+Projekat je nastao na osnovu [Laravel Livewire starter kita](https://github.com/laravel/livewire-starter-kit) (MIT licenca).
