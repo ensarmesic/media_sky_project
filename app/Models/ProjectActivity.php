@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LimitsTitleLength;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 #[Fillable(['project_id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'description', 'metadata'])]
 class ProjectActivity extends Model
 {
+    use LimitsTitleLength;
+
     protected function casts(): array
     {
         return ['metadata' => 'array'];

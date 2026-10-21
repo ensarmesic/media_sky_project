@@ -386,7 +386,8 @@ new #[Title('Projekat')] class extends Component {
     private function saveSideCard(string $property, callable $save): void
     {
         Gate::authorize('update', $this->project);
-        $this->validate([$property => ['nullable', 'string', 'max:500']]);
+        // Dužine prate kolone (next_step 255, current_state 500) da upis prođe i na MySQL-u.
+        $this->validate([$property => ['nullable', 'string', 'max:'.($property === 'nextStep' ? 255 : 500)]]);
         $save();
         $this->refresh();
         unset($this->recentActivities);

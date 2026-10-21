@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LimitsTitleLength;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['administrative_case_item_id', 'user_id', 'event_type', 'title', 'description', 'metadata'])]
 class AdministrativeCaseItemActivity extends Model
 {
+    use LimitsTitleLength;
+
     protected function casts(): array
     {
         return ['metadata' => 'array'];

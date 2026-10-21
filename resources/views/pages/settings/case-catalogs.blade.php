@@ -48,7 +48,7 @@ new #[Title('Šifrarnici postupaka')] class extends Component {
         $data = $this->validate([
             'institutionName' => ['required', 'string', 'max:255'],
             'institutionType' => ['nullable', 'string', 'max:100'],
-            'institutionAddress' => ['nullable', 'string', 'max:500'],
+            'institutionAddress' => ['nullable', 'string', 'max:255'],
             'institutionContact' => ['nullable', 'string', 'max:255'],
             'institutionEmail' => ['nullable', 'email', 'max:255'],
             'institutionPhone' => ['nullable', 'string', 'max:50'],
