@@ -13,6 +13,16 @@ Interna aplikacija Media Sky Telekomunikacije za praćenje projekata i administr
 
 Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4 i Vite, na PHP 8.4. Baza je trenutno SQLite; za produkciju je planiran prelazak na MySQL. Aplikacija nema odvojeni SPA frontend.
 
+## Pokretanje na ovom računaru (Windows)
+
+```powershell
+.\start.ps1
+```
+
+Otvara server (http://localhost:8000, s OPcache-om ~4x brže), queue worker i scheduler, svaki u svom prozoru. Prva prijava: `admin` / `password` (promijeniti u Postavke → Profil / Sigurnost).
+
+**Lokalno nikad ne pokretati `php artisan config:cache` ni `php artisan optimize`** — s keširanom konfiguracijom testovi bi radili nad pravom bazom (testovi se sada sami zaustave ako se to desi).
+
 ## Brzi start (lokalno)
 
 ```bash
