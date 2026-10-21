@@ -18,6 +18,7 @@ class AdministrativeCaseItemService
     /** Polja čije se promjene bilježe u istoriju (staro → novo). */
     private const TRACKED = ['name', 'description', 'status', 'priority', 'due_date', 'responsible_user_id', 'institution_id', 'recipient', 'submitted_at', 'response_at'];
 
+    /** @param  array<string, mixed>  $data */
     public function create(AdministrativeCase $case, array $data, User $user): AdministrativeCaseItem
     {
         return DB::transaction(function () use ($case, $data, $user) {
@@ -40,6 +41,7 @@ class AdministrativeCaseItemService
     }
 
     /** Izmjena bilo kojeg polja zadatka; svaka promjena praćenog polja se loguje. */
+    /** @param  array<string, mixed>  $data */
     public function update(AdministrativeCaseItem $item, array $data, User $user): AdministrativeCaseItem
     {
         $data = $this->normalize($data);
@@ -184,6 +186,7 @@ class AdministrativeCaseItemService
     }
 
     /** Upis u centralni log aktivnosti projekta (subjekt je zadatak). */
+    /** @param  array<string, mixed>  $metadata */
     public function log(AdministrativeCaseItem $item, User $user, string $event, string $title, array $metadata = []): void
     {
         app(ProjectActivityService::class)->record($item->administrativeCase->project, $event, $title, $user, $item, null, $metadata);
@@ -231,6 +234,10 @@ class AdministrativeCaseItemService
         };
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     private function normalize(array $data): array
     {
         foreach (['description', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'outcome', 'notes', 'response_reminder_interval'] as $field) {

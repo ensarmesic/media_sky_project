@@ -8,6 +8,7 @@ use App\Enums\ProjectStatus;
 use App\Models\AdministrativeCaseItem;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -60,7 +61,8 @@ class ProjectWorkflowService
     }
 
     /** Stavke koje blokiraju uredno završavanje projekta. */
-    public function unfinishedRequiredItems(Project $project)
+    /** @return Collection<int, AdministrativeCaseItem> */
+    public function unfinishedRequiredItems(Project $project): Collection
     {
         return AdministrativeCaseItem::query()
             ->where('is_active', true)

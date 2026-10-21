@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class AdministrativeCaseService
 {
+    /** @param  array<string, mixed>  $data */
     public function create(array $data, User $user): AdministrativeCase
     {
         $data = $this->normalizeNullableFields($data);
@@ -37,6 +38,7 @@ class AdministrativeCaseService
         });
     }
 
+    /** @param  array<string, mixed>  $data */
     public function update(AdministrativeCase $case, array $data, User $user): AdministrativeCase
     {
         $data = $this->normalizeNullableFields($data);
@@ -201,11 +203,15 @@ class AdministrativeCaseService
         });
     }
 
-    /** Kreiranje postupka iz šablona (naziv, tip, institucija i stavke šablona). */
+    /**
+     * Kreiranje postupka iz šablona (naziv, tip, institucija i stavke šablona).
+     *
+     * @param  array<string, mixed>  $data
+     */
     public function createFromTemplate(Project $project, array $data, User $user): AdministrativeCase
     {
         return DB::transaction(function () use ($project, $data, $user) {
-            $template = CaseTemplate::with('items')->findOrFail($data['case_template_id']);
+            $template = CaseTemplate::with('items')->findOrFail((int) $data['case_template_id']);
 
             // Prazne vrijednosti iz forme ('' ili null) preuzimaju vrijednost iz šablona.
             $caseTypeId = ($data['case_type_id'] ?? null) ?: $template->case_type_id;
@@ -238,6 +244,10 @@ class AdministrativeCaseService
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     private function normalizeNullableFields(array $data): array
     {
         foreach (['description', 'institution_id', 'submitted_at', 'response_due_at', 'outcome', 'notes', 'closed_at'] as $field) {

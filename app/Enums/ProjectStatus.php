@@ -34,13 +34,21 @@ enum ProjectStatus: string
         };
     }
 
-    /** Statusi koji se nude u izboru (bez zastarjelog "suspended"). @return list<self> */
+    /**
+     * Statusi koji se nude u izboru (bez zastarjelog "suspended").
+     *
+     * @return list<self>
+     */
     public static function selectable(): array
     {
         return [self::Planned, self::InProgress, self::OnHold, self::Completed, self::Archived];
     }
 
-    /** Vrijednosti koje filter u sidebaru tretira kao isti status. @return list<string> */
+    /**
+     * Vrijednosti koje filter u sidebaru tretira kao isti status.
+     *
+     * @return list<string>
+     */
     public function filterValues(): array
     {
         return $this === self::OnHold ? [self::OnHold->value, self::Suspended->value] : [$this->value];

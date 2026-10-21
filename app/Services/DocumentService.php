@@ -20,13 +20,21 @@ use Illuminate\Validation\ValidationException;
 /** Dokumenti na projektu, postupku, stavci i komentaru (privatni disk, verzije). */
 class DocumentService
 {
-    /** Pravila za upload fajla (tip po ekstenziji + konfigurabilan limit veličine). */
+    /**
+     * Pravila za upload fajla (tip po ekstenziji + konfigurabilan limit veličine).
+     *
+     * @return list<string>
+     */
     public static function fileRules(): array
     {
         return ['required', 'file', 'extensions:'.config('projectflow.documents.allowed_extensions'), 'max:'.config('projectflow.documents.max_size')];
     }
 
-    /** Poruke grešaka za upload na bosanskom. */
+    /**
+     * Poruke grešaka za upload na bosanskom.
+     *
+     * @return array<string, string>
+     */
     public static function fileMessages(string $attribute = 'file'): array
     {
         $maxMb = (int) round(config('projectflow.documents.max_size') / 1024);

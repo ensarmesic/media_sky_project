@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\AdministrativeCase;
+use App\Models\AdministrativeCaseItem;
 use App\Models\Link;
 use App\Models\Project;
 use App\Models\User;
@@ -35,7 +37,7 @@ class LinkService
     }
 
     /** @param  array{url: string, title?: ?string}  $data */
-    public function create(Model $owner, User $user, array $data): Link
+    public function create(AdministrativeCaseItem|AdministrativeCase|Project $owner, User $user, array $data): Link
     {
         abort_unless(self::canManage($user, $owner), 403);
         validator($data, self::rules(), self::messages())->validate();

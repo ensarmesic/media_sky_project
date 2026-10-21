@@ -19,6 +19,7 @@ class DailyDigestNotification extends Notification implements ShouldQueue
      */
     public function __construct(public string $digestDate, public array $overdueCases, public array $overdueTasks, public array $dueSoonTasks, public array $waitingItems) {}
 
+    /** @return list<string> */
     public function via(object $notifiable): array
     {
         return ['mail'];

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\NotificationKind;
 use App\Models\User;
 use App\Notifications\WorkspaceNotification;
-use Illuminate\Support\Collection;
 
 class NotificationDispatchService
 {
@@ -13,8 +12,11 @@ class NotificationDispatchService
      * Distribuira obavještenje svim relevantnim korisnicima poštujući njihove
      * postavke (kanali + isključene vrste obavještenja). Korisnik nikad ne dobija
      * obavijest za vlastitu akciju. Vraća broj poslanih.
+     *
+     * @param  iterable<User|null>  $users
+     * @param  array<string, mixed>  $extra
      */
-    public function dispatch(iterable|Collection $users, NotificationKind $kind, string $title, string $url, ?string $dueDate = null, array $extra = []): int
+    public function dispatch(iterable $users, NotificationKind $kind, string $title, string $url, ?string $dueDate = null, array $extra = []): int
     {
         $sent = 0;
         $notified = [];

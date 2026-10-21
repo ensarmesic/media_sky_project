@@ -8,7 +8,12 @@ use Illuminate\Support\Facades\DB;
 
 class CaseTemplateService
 {
-    /** Kreiranje ili ažuriranje šablona sa stavkama (naziv, tip, težina, obaveznost, redoslijed). */
+    /**
+     * Kreiranje ili ažuriranje šablona sa stavkama (naziv, tip, težina, obaveznost, redoslijed).
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array<string, mixed>>  $items
+     */
     public function save(User $user, array $data, array $items, ?CaseTemplate $template = null): CaseTemplate
     {
         return DB::transaction(function () use ($user, $data, $items, $template) {

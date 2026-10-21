@@ -135,6 +135,10 @@ class ActivityPresenter
         };
     }
 
+    /**
+     * @param  Builder<ProjectActivity>  $query
+     * @return Builder<ProjectActivity>
+     */
     public static function applyTypeFilter(Builder $query, string $type): Builder
     {
         return match ($type) {
@@ -163,8 +167,8 @@ class ActivityPresenter
             'project_status' => ProjectStatus::tryFrom((string) $value)?->label() ?? (string) $value,
             'priority' => CaseItemPriority::tryFrom((string) $value)?->label() ?? (string) $value,
             'due_date', 'submitted_at', 'response_at' => Carbon::parse($value)->format('d.m.Y.'),
-            'responsible_user_id' => self::$names['user'.$value] ??= User::find($value)?->shortName() ?? 'bivši korisnik',
-            'institution_id' => self::$names['institution'.$value] ??= Institution::find($value)?->name ?? '–',
+            'responsible_user_id' => self::$names['user'.$value] ??= User::find((int) $value)?->shortName() ?? 'bivši korisnik',
+            'institution_id' => self::$names['institution'.$value] ??= Institution::find((int) $value)->name ?? '–',
             'progress' => $value.'%',
             default => (string) $value,
         };

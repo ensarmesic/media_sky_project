@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Support\Carbon;
 
 /**
+ * @property-read User|null $user
+ * @property-read Model|null $subject
  * @property int $id
  * @property int $project_id
  * @property int|null $user_id
@@ -17,10 +19,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $subject_id
  * @property string $title
  * @property string|null $description
- * @property array<string, mixed>|null $metadata
- * @property Carbon $created_at
- * @property-read User|null $user
- * @property-read Model|null $subject
+ * @property array<array-key, mixed>|null $metadata
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 #[Fillable(['project_id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'description', 'metadata'])]
 class ProjectActivity extends Model
@@ -30,16 +31,19 @@ class ProjectActivity extends Model
         return ['metadata' => 'array'];
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return MorphTo<Model, $this> */
     public function subject(): MorphTo
     {
         return $this->morphTo();

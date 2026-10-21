@@ -6,6 +6,7 @@ use App\Enums\CaseItemPriority;
 use App\Enums\CaseItemStatus;
 use App\Enums\CaseItemType;
 use App\Enums\CaseOutcome;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,39 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 /**
  * Stavka postupka (u interfejsu "Stavka"; u kodu stavka administrativnog predmeta).
  * Institucija/primalac = institution_id ili slobodan tekst recipient.
+ *
+ * @property int $id
+ * @property int $administrative_case_id
+ * @property string $name
+ * @property string|null $description
+ * @property CaseItemType $type
+ * @property CaseItemStatus $status
+ * @property CaseOutcome|null $outcome
+ * @property int|null $responsible_user_id
+ * @property CarbonImmutable|null $start_date
+ * @property CarbonImmutable|null $due_date
+ * @property CarbonImmutable|null $completed_at
+ * @property string $progress_weight
+ * @property int $position
+ * @property bool $is_required_for_closure
+ * @property bool $is_active
+ * @property string|null $notes
+ * @property int $created_by
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property int|null $institution_id
+ * @property string|null $recipient
+ * @property CarbonImmutable|null $submitted_at
+ * @property CarbonImmutable|null $response_at
+ * @property int|null $response_reminder_interval
+ * @property CarbonImmutable|null $response_reminded_at
+ * @property bool $is_blocked
+ * @property string|null $blocked_reason
+ * @property CarbonImmutable|null $deadline_reminded_at
+ * @property CarbonImmutable|null $overdue_reminded_at
+ * @property CaseItemPriority $priority
+ * @property-read Institution|null $institution
+ * @property-read User|null $responsible
  */
 #[Fillable(['administrative_case_id', 'name', 'description', 'type', 'status', 'priority', 'outcome', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'completed_at', 'response_reminder_interval', 'response_reminded_at', 'deadline_reminded_at', 'overdue_reminded_at', 'is_blocked', 'blocked_reason', 'progress_weight', 'position', 'is_required_for_closure', 'is_active', 'notes', 'created_by'])]
 class AdministrativeCaseItem extends Model
@@ -94,66 +128,92 @@ class AdministrativeCaseItem extends Model
     /** Naziv institucije ili slobodno upisani primalac. */
     public function recipientName(): ?string
     {
-        return $this->institution?->name ?? ($this->recipient ?: null);
+        $institution = $this->institution_id !== null ? $this->institution : null;
+
+        return $institution !== null ? $institution->name : ($this->recipient ?: null);
     }
 
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
     public function scopeOpen(Builder $query): Builder
     {
         return $query->where('is_active', true)->whereNotIn('status', CaseItemStatus::closedValues());
     }
 
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
     public function scopeOverdue(Builder $query): Builder
     {
-        return $query->open()->whereDate('due_date', '<', today());
+        return $this->scopeOpen($query)->whereDate('due_date', '<', today());
     }
 
+    /** @return BelongsTo<AdministrativeCase, $this> */
     public function administrativeCase(): BelongsTo
     {
         return $this->belongsTo(AdministrativeCase::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function responsible(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsible_user_id');
     }
 
+    /** @return BelongsTo<Institution, $this> */
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Stari zapisi istorije (prije centralnog loga aktivnosti). */
+    /**
+     * Stari zapisi istorije (prije centralnog loga aktivnosti).
+     *
+     * @return HasMany<AdministrativeCaseItemActivity, $this>
+     */
     public function activities(): HasMany
     {
         return $this->hasMany(AdministrativeCaseItemActivity::class);
     }
 
-    /** Centralni log aktivnosti (project_activities sa ovom stavkom kao subjektom). */
+    /**
+     * Centralni log aktivnosti (project_activities sa ovom stavkom kao subjektom).
+     *
+     * @return MorphMany<ProjectActivity, $this>
+     */
     public function activityLog(): MorphMany
     {
         return $this->morphMany(ProjectActivity::class, 'subject');
     }
 
+    /** @return MorphMany<Comment, $this> */
     public function comments(): MorphMany
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
 
+    /** @return MorphMany<ProjectDocument, $this> */
     public function documents(): MorphMany
     {
         return $this->morphMany(ProjectDocument::class, 'documentable');
     }
 
+    /** @return MorphMany<Link, $this> */
     public function links(): MorphMany
     {
         return $this->morphMany(Link::class, 'linkable');
     }
 
+    /** @return HasMany<ChecklistItem, $this> */
     public function checklistItems(): HasMany
     {
         return $this->hasMany(ChecklistItem::class)->orderBy('position')->orderBy('id');
@@ -165,12 +225,17 @@ class AdministrativeCaseItem extends Model
         return route('tasks.show', $this->id);
     }
 
+    /** @return HasMany<DocumentReference, $this> */
     public function documentReferences(): HasMany
     {
         return $this->hasMany(DocumentReference::class);
     }
 
-    /** Dokumenti (vanjski linkovi / protokol) dodatno povezani sa stavkom preko pivot tabele. */
+    /**
+     * Dokumenti (vanjski linkovi / protokol) dodatno povezani sa stavkom preko pivot tabele.
+     *
+     * @return BelongsToMany<DocumentReference, $this>
+     */
     public function linkedDocumentReferences(): BelongsToMany
     {
         return $this->belongsToMany(DocumentReference::class, 'document_reference_items');

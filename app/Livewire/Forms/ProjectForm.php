@@ -37,6 +37,7 @@ class ProjectForm extends Form
 
     public string $notes = '';
 
+    /** @var array<int, int|string> */
     public array $member_ids = [];
 
     public function setProject(Project $project): void
@@ -57,6 +58,7 @@ class ProjectForm extends Form
         ]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -78,10 +80,9 @@ class ProjectForm extends Form
     public function save(): Project
     {
         $data = $this->validate();
-        $memberIds = $data['member_ids'];
         unset($data['member_ids']);
 
-        return DB::transaction(function () use ($data, $memberIds) {
+        return DB::transaction(function () use ($data) {
             $created = ! $this->project;
             if ($this->project) {
                 $this->project->update($data);
@@ -89,7 +90,7 @@ class ProjectForm extends Form
             } else {
                 $project = Project::create([...$data, 'created_by' => Auth::id()]);
             }
-            $members = collect($memberIds)->mapWithKeys(fn ($id) => [$id => ['role' => 'member']]);
+            $members = collect($this->member_ids)->mapWithKeys(fn ($id) => [$id => ['role' => 'member']]);
             $members->put((int) $data['responsible_user_id'], ['role' => 'manager']);
             $attached = $project->members()->sync($members->all())['attached'];
             app(NotificationDispatchService::class)->dispatch(User::whereKey($attached)->get(), NotificationKind::ProjectMember, 'Dodani ste na projekat: '.$project->name, route('projects.show', $project));

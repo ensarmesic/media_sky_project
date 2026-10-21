@@ -12,8 +12,10 @@ class WorkspaceNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /** @param  array<string, mixed>  $extra */
     public function __construct(public string $kind, public string $title, public string $url, public ?string $dueDate = null, public array $extra = []) {}
 
+    /** @return list<string> */
     public function via(object $notifiable): array
     {
         return $this->channelsFor($notifiable);
@@ -38,11 +40,13 @@ class WorkspaceNotification extends Notification implements ShouldQueue
             ->salutation(config('app.name'));
     }
 
+    /** @return array<string, mixed> */
     public function toArray(object $notifiable): array
     {
         return ['kind' => $this->kind, 'title' => $this->title, 'url' => $this->url, 'due_date' => $this->dueDate, 'extra' => $this->extra];
     }
 
+    /** @return list<string> */
     private function channelsFor(object $notifiable): array
     {
         if (! $notifiable instanceof User) {

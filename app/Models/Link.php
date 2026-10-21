@@ -2,20 +2,32 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-/** Vanjski link na zadatku ili predmetu. */
+/**
+ * @property int $id
+ * @property string $linkable_type
+ * @property int $linkable_id
+ * @property int $user_id
+ * @property string|null $title
+ * @property string $url
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ */
 #[Fillable(['linkable_type', 'linkable_id', 'user_id', 'title', 'url'])]
 class Link extends Model
 {
+    /** @return MorphTo<Model, $this> */
     public function linkable(): MorphTo
     {
         return $this->morphTo();
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withDefault(['name' => 'Bivši korisnik']);

@@ -25,7 +25,7 @@ class AttentionService
      * Stavke koje traže pažnju, grupisane po projektu (jedan upit za sve projekte).
      *
      * @param  iterable<int>  $projectIds
-     * @return Collection<int, Collection<int, array{item: AdministrativeCaseItem, type: string, reason: string, date: ?CarbonInterface}>>
+     * @return Collection<int, Collection<int, array{item: AdministrativeCaseItem, type: string, reason: string, date: ?CarbonInterface, rank: int}>>
      */
     public function forProjects(iterable $projectIds, ?int $limitPerProject = null): Collection
     {
@@ -46,12 +46,12 @@ class AttentionService
         return $items
             ->map(fn (AdministrativeCaseItem $item) => $this->describe($item, $waitingDays, $dueWithin))
             ->filter()
-            ->sortBy(fn (array $entry) => [$entry['rank'], $entry['date']?->timestamp ?? PHP_INT_MAX])
+            ->sortBy(fn (array $entry) => [$entry['rank'], $entry['date']->timestamp ?? PHP_INT_MAX])
             ->groupBy(fn (array $entry) => $entry['item']->administrativeCase->project_id)
-            ->map(fn (Collection $entries) => $entries->values()->when($limitPerProject !== null, fn (Collection $list) => $list->take($limitPerProject)));
+            ->map(fn (Collection $entries) => $limitPerProject === null ? $entries->values() : $entries->values()->take($limitPerProject));
     }
 
-    /** @return Collection<int, array{item: AdministrativeCaseItem, type: string, reason: string, date: ?CarbonInterface}> */
+    /** @return Collection<int, array{item: AdministrativeCaseItem, type: string, reason: string, date: ?CarbonInterface, rank: int}> */
     public function forProject(int $projectId, ?int $limit = null): Collection
     {
         return $this->forProjects([$projectId], $limit)->get($projectId, collect());

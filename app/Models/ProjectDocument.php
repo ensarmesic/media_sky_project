@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,29 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 /**
  * Dokument (fajl) na projektu, postupku, stavci ili komentaru. Čuva se na privatnom
  * disku. Nova verzija je novi zapis; stara verzija dobija replaced_by_id i ostaje sačuvana.
+ *
+ * @property int $id
+ * @property int $project_id
+ * @property int $uploaded_by
+ * @property string $name
+ * @property string $path
+ * @property string|null $mime_type
+ * @property int $size
+ * @property string|null $description
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property int|null $administrative_case_id
+ * @property int|null $administrative_case_item_id
+ * @property string|null $document_type
+ * @property int $version
+ * @property int|null $replaced_by_id
+ * @property bool $is_archived
+ * @property string|null $documentable_type
+ * @property int|null $documentable_id
+ * @property string|null $original_name
+ * @property string|null $direction
+ * @property string|null $protocol_number
+ * @property CarbonImmutable|null $document_date
  */
 #[Fillable(['project_id', 'documentable_type', 'documentable_id', 'administrative_case_id', 'administrative_case_item_id', 'uploaded_by', 'name', 'original_name', 'path', 'mime_type', 'size', 'description', 'document_type', 'direction', 'protocol_number', 'document_date', 'version', 'replaced_by_id', 'is_archived'])]
 class ProjectDocument extends Model
@@ -29,49 +53,67 @@ class ProjectDocument extends Model
         return ['size' => 'integer', 'version' => 'integer', 'replaced_by_id' => 'integer', 'is_archived' => 'boolean', 'document_date' => 'date'];
     }
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    /** Vlasnik dokumenta: Project, AdministrativeCase, AdministrativeCaseItem ili Comment. */
+    /**
+     * Vlasnik dokumenta: Project, AdministrativeCase, AdministrativeCaseItem ili Comment.
+     *
+     * @return MorphTo<Model, $this>
+     */
     public function documentable(): MorphTo
     {
         return $this->morphTo();
     }
 
+    /** @return BelongsTo<AdministrativeCase, $this> */
     public function administrativeCase(): BelongsTo
     {
         return $this->belongsTo(AdministrativeCase::class);
     }
 
+    /** @return BelongsTo<AdministrativeCaseItem, $this> */
     public function administrativeCaseItem(): BelongsTo
     {
         return $this->belongsTo(AdministrativeCaseItem::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by')->withDefault(['name' => 'Bivši korisnik']);
     }
 
+    /** @return BelongsTo<self, $this> */
     public function replacedBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'replaced_by_id');
     }
 
+    /** @return HasMany<self, $this> */
     public function previousVersions(): HasMany
     {
         return $this->hasMany(self::class, 'replaced_by_id');
     }
 
-    /** Stavke s kojima je datoteka dodatno povezana (pored primarne administrative_case_item_id veze). */
+    /**
+     * Stavke s kojima je datoteka dodatno povezana (pored primarne administrative_case_item_id veze).
+     *
+     * @return BelongsToMany<AdministrativeCaseItem, $this>
+     */
     public function linkedItems(): BelongsToMany
     {
         return $this->belongsToMany(AdministrativeCaseItem::class, 'project_document_items');
     }
 
-    /** Sve starije verzije (lanac replaced_by_id unazad), najnovija prva. */
+    /**
+     * Sve starije verzije (lanac replaced_by_id unazad), najnovija prva.
+     *
+     * @return Collection<int, self>
+     */
     public function versionHistory(): Collection
     {
         $history = new Collection;

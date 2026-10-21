@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProjectActivityService
 {
+    /** @param  array<string, mixed>  $metadata */
     public function record(Project $project, string $eventType, string $title, ?User $user = null, ?Model $subject = null, ?string $description = null, array $metadata = []): ProjectActivity
     {
         return $project->activities()->create([

@@ -173,7 +173,7 @@ class DemoSeeder extends Seeder
         ]);
     }
 
-    /** @param  list<array{0: string, 1: CaseItemStatus, 2: string, 3: ?int, 4: ?int, 5: string}>  $items */
+    /** @param  array<int, array{0: string, 1: CaseItemStatus, 2: string, 3: ?int, 4: ?int, 5: string}>  $items */
     private function case(Project $project, string $name, string $institution, string $icon, int $position, array $items): AdministrativeCase
     {
         $case = AdministrativeCase::create([
