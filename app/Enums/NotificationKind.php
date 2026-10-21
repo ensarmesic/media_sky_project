@@ -16,6 +16,7 @@ enum NotificationKind: string
     case DocumentLinked = 'document_linked';
     case ResponseReceived = 'response_received';
     case ProjectCompleted = 'project_completed';
+    case BackupProblem = 'backup_problem';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum NotificationKind: string
             self::DocumentLinked => 'Povezan je novi dokument',
             self::ResponseReceived => 'Zaprimljen je odgovor institucije',
             self::ProjectCompleted => 'Projekat je označen kao završen',
+            self::BackupProblem => 'Problem s backupom (samo admin)',
         };
     }
 
@@ -44,6 +46,7 @@ enum NotificationKind: string
             self::TaskCommented => 'chat-bubble-left',
             self::StatusChanged => 'arrow-path',
             self::DocumentLinked => 'paper-clip',
+            self::BackupProblem => 'circle-stack',
             default => 'bell',
         };
     }

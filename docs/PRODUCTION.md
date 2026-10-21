@@ -88,4 +88,52 @@ php artisan app:health        # provjera da scheduler i queue rade
 
 ## Backup
 
-Svakodnevno sačuvati bazu i `storage/app/private` (dokumenti). Backup mora imati definiran period čuvanja, biti na drugom serveru/disku i redovno testiran restore. Produkcijski `.env` čuvati u odvojenom sigurnom spremištu. Dokumente vanjskog protokola ne duplicirati.
+Backup radi `spatie/laravel-backup` kroz komandu `php artisan app:backup`:
+
+- **Sadržaj:** baza + dokumenti (`storage/app/private`, gdje ih sprema `ProjectDocument::DISK = local`). Bez `vendor`, `node_modules`, keša i logova.
+  - MySQL: dump preko `mysqldump` (mora biti dostupan na serveru — dolazi uz MySQL; ako nije u PATH-u, u `mysql` konekciji u `config/database.php` dodati `'dump' => ['dump_binary_path' => '/putanja/do/mysql/bin']`).
+  - SQLite: konzistentan snimak baze (`VACUUM INTO`), bez potrebe za `sqlite3` alatom.
+- **Raspored:** backup svaki dan u 02:00, čišćenje starih u 03:00, provjera starosti u 04:00 (scheduler mora raditi).
+- **Čuvanje:** svi backupi 7 dana, dnevni 30 dana, sedmični 8 sedmica, mjesečni 6 mjeseci.
+- **Upozorenje:** ako backup ne uspije ili je najnoviji stariji od 26 sati, svi admini dobiju obavijest (zvono + e-mail ako ga imaju i nisu ga isključili).
+- **Postavke → Stanje sistema:** zadnji uspješan backup po odredištu, veličina, broj čuvanih i dugme "Napravi backup sada" (ide kroz queue).
+
+### Odredište
+
+Odredišta se biraju u `.env` (zarezom odvojeno):
+
+```dotenv
+BACKUP_DISKS=backups               # lokalno: storage/app/backups (ili BACKUP_LOCAL_PATH)
+# BACKUP_DISKS=backups,sftp_backups  # preporučeno: lokalno + udaljeno
+```
+
+**Backup samo na istom serveru nije dovoljan** — kvar diska, ransomware ili brisanje servera odnose i aplikaciju i backup. Uz lokalni obavezno podesiti bar jedno udaljeno odredište:
+
+- **SFTP** (drugi server/NAS): `composer require league/flysystem-sftp-v3`, pa `BACKUP_SFTP_HOST`, `BACKUP_SFTP_USERNAME`, `BACKUP_SFTP_PASSWORD` ili `BACKUP_SFTP_PRIVATE_KEY`, `BACKUP_SFTP_ROOT`.
+- **S3-kompatibilan** (AWS S3, Backblaze B2, Wasabi, MinIO): `composer require league/flysystem-aws-s3-v3`, pa `BACKUP_S3_KEY`, `BACKUP_S3_SECRET`, `BACKUP_S3_BUCKET`, `BACKUP_S3_REGION`, po potrebi `BACKUP_S3_ENDPOINT`.
+
+Arhiva se može zaključati lozinkom: `BACKUP_ARCHIVE_PASSWORD=...` (lozinku čuvati odvojeno od servera — bez nje se backup ne može otvoriti).
+
+**`.env` nije u backupu** (sadrži lozinke). Čuvati ga posebno, na sigurnom mjestu: bez istog `APP_KEY` ne mogu se dešifrovati 2FA podaci korisnika.
+
+### Vraćanje iz backupa
+
+1. Staviti aplikaciju u održavanje: `php artisan down`.
+2. Preuzeti željeni zip s odredišta (npr. `storage/app/backups/media-sky-project/2026-10-21-02-00-00.zip`) i raspakovati ga u privremeni folder.
+3. **Dokumenti:** sadržaj foldera `.../storage/app/private` iz arhive kopirati u `storage/app/private` aplikacije (preko postojećeg).
+4. **Baza:**
+   - MySQL: `mysql -u <korisnik> -p <baza> < db-dumps/mysql-<baza>.sql`
+   - SQLite: fajl `.../storage/app/backup-temp/sqlite/database.sqlite` iz arhive kopirati preko `database/database.sqlite`.
+5. `php artisan migrate --force` (ako je backup stariji od zadnjeg deploya), `php artisan optimize:clear`, `php artisan queue:restart`.
+6. `php artisan up` i provjeriti nekoliko projekata, stavki i preuzimanje dokumenata.
+
+**Vraćanje treba bar jednom isprobati** (na testnom serveru ili kopiji) prije nego zatreba — backup koji nikad nije vraćen nije provjeren backup.
+
+### Ručne komande
+
+```bash
+php artisan app:backup        # backup odmah
+php artisan backup:list       # pregled backupa po odredištu
+php artisan backup:monitor    # provjera starosti (26 h)
+php artisan backup:clean      # brisanje starih prema pravilima čuvanja
+```

@@ -60,6 +60,38 @@ return [
             'report' => false,
         ],
 
+        // Backup (spatie/laravel-backup). Lokalni disk NIJE dovoljan sam za sebe — vidi docs/PRODUCTION.md.
+        'backups' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_LOCAL_PATH', storage_path('app/backups')),
+            'throw' => true,
+        ],
+
+        // Udaljeni S3-kompatibilan prostor (AWS, Backblaze, Wasabi, MinIO...). Traži: composer require league/flysystem-aws-s3-v3
+        's3_backups' => [
+            'driver' => 's3',
+            'key' => env('BACKUP_S3_KEY'),
+            'secret' => env('BACKUP_S3_SECRET'),
+            'region' => env('BACKUP_S3_REGION', 'eu-central-1'),
+            'bucket' => env('BACKUP_S3_BUCKET'),
+            'endpoint' => env('BACKUP_S3_ENDPOINT'),
+            'use_path_style_endpoint' => env('BACKUP_S3_PATH_STYLE', false),
+            'throw' => true,
+        ],
+
+        // Udaljeni server preko SFTP-a. Traži: composer require league/flysystem-sftp-v3
+        'sftp_backups' => [
+            'driver' => 'sftp',
+            'host' => env('BACKUP_SFTP_HOST'),
+            'port' => (int) env('BACKUP_SFTP_PORT', 22),
+            'username' => env('BACKUP_SFTP_USERNAME'),
+            'password' => env('BACKUP_SFTP_PASSWORD'),
+            'privateKey' => env('BACKUP_SFTP_PRIVATE_KEY'),
+            'root' => env('BACKUP_SFTP_ROOT', '/backups/media-sky-project'),
+            'timeout' => 30,
+            'throw' => true,
+        ],
+
     ],
 
     /*

@@ -149,5 +149,10 @@ Schedule::call(fn () => app(SystemHealth::class)->recordSchedulerRun())->everyMi
 Schedule::command('items:send-deadline-reminders')->dailyAt('07:00')->withoutOverlapping();
 Schedule::command('cases:send-deadline-reminders')->dailyAt('07:05')->withoutOverlapping();
 Schedule::command('items:send-waiting-reminders')->dailyAt('07:10')->withoutOverlapping();
+// Backup (spatie/laravel-backup): backup u 02:00, čišćenje starih u 03:00, provjera starosti (26 h) u 04:00.
+Schedule::command('app:backup')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('backup:clean')->dailyAt('03:00')->withoutOverlapping();
+Schedule::command('backup:monitor')->dailyAt('04:00');
+
 // Svaki korisnik bira sat dnevnog sažetka (digest_hour), pa se komanda pokreće svaki sat.
 Schedule::command('notifications:send-daily-digest')->hourly()->withoutOverlapping();

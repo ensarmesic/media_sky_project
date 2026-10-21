@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\RunBackupJob;
 use App\Services\SystemHealth;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -60,6 +61,13 @@ new #[Title('Stanje sistema')] class extends Component {
         Flux::toast('Svi neuspjeli jobovi su vraćeni u red čekanja.');
     }
 
+    public function backupNow(): void
+    {
+        abort_unless(auth()->user()->isAdministrator(), 403);
+        RunBackupJob::dispatch();
+        Flux::toast('Backup je pokrenut u pozadini. Osvježite stranicu za nekoliko minuta.');
+    }
+
     public function forgetAll(): void
     {
         abort_unless(auth()->user()->isAdministrator(), 403);
@@ -95,6 +103,24 @@ new #[Title('Stanje sistema')] class extends Component {
                     </div>
                 @endforeach
             </dl>
+
+            <section>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <flux:heading>Backup</flux:heading>
+                    <flux:button size="sm" icon="circle-stack" wire:click="backupNow">Napravi backup sada</flux:button>
+                </div>
+                <ul class="mt-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-700">
+                    @foreach($health->backups() as $backup)
+                        <li class="grid gap-1 p-3 text-sm sm:grid-cols-4" wire:key="backup-{{ $backup['disk'] }}">
+                            <span class="font-medium">{{ $backup['disk'] }}@unless($backup['reachable'])<span class="ml-1 text-xs text-red-600">nedostupan</span>@endunless</span>
+                            <span><span class="text-xs text-zinc-500">Zadnji uspješan:</span> {{ $backup['newest']?->format('d.m.Y. H:i') ?? 'nikad' }}</span>
+                            <span><span class="text-xs text-zinc-500">Veličina:</span> {{ SystemHealth::humanBytes($backup['size']) }}</span>
+                            <span><span class="text-xs text-zinc-500">Čuva se:</span> {{ $backup['count'] }} ({{ SystemHealth::humanBytes($backup['used']) }})</span>
+                        </li>
+                    @endforeach
+                </ul>
+                <flux:text class="mt-2 text-xs">Backup se pravi svaki dan u 02:00. Odredišta se biraju u <code>.env</code> (<code>BACKUP_DISKS</code>); backup samo na istom serveru nije dovoljan.</flux:text>
+            </section>
 
             <section>
                 <div class="flex flex-wrap items-center justify-between gap-2">
