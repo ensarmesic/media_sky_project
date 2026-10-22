@@ -37,10 +37,10 @@ class AttentionService
             ->with(['administrativeCase:id,project_id,name,is_archived', 'responsible:id,name'])
             ->whereHas('administrativeCase', fn (Builder $query) => $query->whereIn('project_id', collect($projectIds)->all())->where('is_archived', false))
             ->where(fn (Builder $query) => $query
-                ->whereDate('due_date', '<=', today()->addDays($dueWithin))
+                ->whereDate('due_date', '<=', local_today()->addDays($dueWithin))
                 ->orWhere(fn (Builder $waiting) => $waiting
                     ->where('status', CaseItemStatus::WaitingResponse->value)
-                    ->whereDate('submitted_at', '<=', today()->subDays($waitingDays))))
+                    ->whereDate('submitted_at', '<=', local_today()->subDays($waitingDays))))
             ->get();
 
         return $items

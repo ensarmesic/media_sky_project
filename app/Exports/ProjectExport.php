@@ -26,7 +26,7 @@ final class ProjectExport
     {
         $code = trim((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', Str::ascii($this->project->code ?: $this->project->name)), '-');
 
-        return ($code !== '' ? $code : 'projekat').'_'.now()->format('d-m-Y').'.xlsx';
+        return ($code !== '' ? $code : 'projekat').'_'.local_time(now())->format('d-m-Y').'.xlsx';
     }
 
     public function store(string $path): void
@@ -81,7 +81,7 @@ final class ProjectExport
             yield [
                 $case->name, $case->institution?->name, $counts['total'], $counts['done'], $counts['percent'],
                 XlsxWorkbook::status($status->label(), $status->color()),
-                $last?->created_at, $last !== null ? ActivityPresenter::sentence($last) : null,
+                local_time($last?->created_at), $last !== null ? ActivityPresenter::sentence($last) : null,
             ];
         }
     }

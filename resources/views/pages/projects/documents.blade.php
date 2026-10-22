@@ -145,7 +145,7 @@ new #[Title('Dokumenti projekta')] class extends Component {
                     @if($document->version > 1)<flux:badge size="sm" color="zinc" class="ml-1">Verzija {{ $document->version }}</flux:badge>@endif
                     <div class="mt-0.5 text-xs text-zinc-500">
                         {{ match (true) { $owner instanceof AdministrativeCaseItem => 'Stavka: '.$owner->name, $owner instanceof AdministrativeCase => 'Postupak: '.$owner->name, $owner instanceof Comment => 'Prilog komentaru', default => 'Projekat' } }}
-                        · {{ ($document->document_date ?? $document->created_at)->format('d.m.Y.') }}
+                        · {{ local_time($document->document_date ?? $document->created_at)->format('d.m.Y.') }}
                         @if($document->directionLabel()) · {{ $document->directionLabel() }}@endif
                         @if($document->protocol_number) · Br. {{ $document->protocol_number }}@endif
                         · {{ $document->humanSize() }} · {{ $document->uploader->shortName() }}

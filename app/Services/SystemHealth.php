@@ -63,7 +63,7 @@ class SystemHealth
         if ($lastRun === null) {
             $warnings[] = 'Scheduler još nije zabilježio nijedno pokretanje (podsjetnici i dnevni poslovi ne rade).';
         } elseif ($lastRun->lt(now()->subMinutes($staleMinutes))) {
-            $warnings[] = 'Scheduler nije radio od '.$lastRun->format('d.m.Y. H:i').' (više od '.$staleMinutes.' min).';
+            $warnings[] = 'Scheduler nije radio od '.local_time($lastRun)->format('d.m.Y. H:i').' (više od '.$staleMinutes.' min).';
         }
 
         $pending = $this->pendingJobs();

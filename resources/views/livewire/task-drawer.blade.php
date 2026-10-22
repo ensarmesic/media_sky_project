@@ -161,7 +161,7 @@ new class extends Component {
     {
         $this->editableTask();
         $this->resetValidation();
-        $this->response = ['date' => today()->toDateString(), 'protocol_number' => '', 'outcome' => CaseItemStatus::Completed->value];
+        $this->response = ['date' => local_today()->toDateString(), 'protocol_number' => '', 'outcome' => CaseItemStatus::Completed->value];
         $this->responseFile = null;
         $this->showResponseForm = true;
     }
@@ -501,8 +501,8 @@ new class extends Component {
                     </flux:select>
                     <dl class="space-y-1.5 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800">
                         <div>Postupak: <span class="text-zinc-700 dark:text-zinc-300">{{ $task->administrativeCase->name }}</span></div>
-                        <div>Kreirano: {{ $task->created_at->format('d.m.Y.') }}</div>
-                        @if($task->completed_at)<div>Završeno: {{ $task->completed_at->format('d.m.Y.') }}</div>@endif
+                        <div>Kreirano: {{ local_time($task->created_at)->format('d.m.Y.') }}</div>
+                        @if($task->completed_at)<div>Završeno: {{ local_time($task->completed_at)->format('d.m.Y.') }}</div>@endif
                     </dl>
                     <div wire:loading.delay class="text-xs text-zinc-400" role="status">Snimanje…</div>
                 </aside>

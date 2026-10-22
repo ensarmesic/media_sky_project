@@ -513,7 +513,7 @@ new #[Title('Projekat')] class extends Component {
                                     <span class="min-w-0">
                                         <span class="block truncate font-semibold">{{ $case->name }}</span>
                                         <span class="block truncate text-sm text-zinc-500">{{ $case->institution?->name ?? 'Bez institucije' }}</span>
-                                        @if($lastActivity)@php($lastSentence = App\Support\ActivityPresenter::sentence($lastActivity))<span class="block truncate text-xs text-zinc-400 2xl:hidden" title="{{ $lastSentence }}">{{ $lastActivity->created_at->format('d.m.Y.') }} · {{ $lastSentence }}</span>@endif
+                                        @if($lastActivity)@php($lastSentence = App\Support\ActivityPresenter::sentence($lastActivity))<span class="block truncate text-xs text-zinc-400 2xl:hidden" title="{{ $lastSentence }}">{{ local_time($lastActivity->created_at)->format('d.m.Y.') }} · {{ $lastSentence }}</span>@endif
                                     </span>
                                 </button>
                                 <div class="w-36 shrink-0">
@@ -527,7 +527,7 @@ new #[Title('Projekat')] class extends Component {
                                 <div class="hidden w-44 shrink-0 border-l border-zinc-100 pl-4 text-xs text-zinc-500 2xl:block dark:border-zinc-800">
                                     <div>Posljednja aktivnost</div>
                                     @if($lastActivity)
-                                        <div class="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{{ $lastActivity->created_at->format('d.m.Y.') }}</div>
+                                        <div class="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{{ local_time($lastActivity->created_at)->format('d.m.Y.') }}</div>
                                         <div class="line-clamp-2" title="{{ App\Support\ActivityPresenter::sentence($lastActivity) }}">{{ App\Support\ActivityPresenter::sentence($lastActivity) }}</div>
                                     @else
                                         <div class="mt-0.5">–</div>
@@ -702,7 +702,7 @@ new #[Title('Projekat')] class extends Component {
                             <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"><flux:icon :name="$activity->icon()" variant="micro" class="size-4" /></span>
                             @php($sentence = App\Support\ActivityPresenter::sentence($activity))
                             <span class="line-clamp-2 min-w-0 flex-1" title="{{ $sentence }}">{{ $sentence }}</span>
-                            <span class="shrink-0 text-xs text-zinc-500">{{ $activity->created_at->format('d.m.Y.') }}</span>
+                            <span class="shrink-0 text-xs text-zinc-500">{{ local_time($activity->created_at)->format('d.m.Y.') }}</span>
                         </li>
                     @empty
                         <li class="text-sm text-zinc-500">Još nema aktivnosti.</li>
@@ -722,7 +722,7 @@ new #[Title('Projekat')] class extends Component {
                             <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $document->iconClass() }}"><flux:icon :name="$document->icon()" variant="mini" class="size-4" /></span>
                             <div class="min-w-0 flex-1">
                                 <a href="{{ route('documents.show', $document) }}" target="_blank" rel="noopener" class="block truncate text-sm font-medium hover:text-blue-600">{{ $document->name }}</a>
-                                <div class="truncate text-xs text-zinc-500">{{ ($document->document_date ?? $document->created_at)->format('d.m.Y.') }}{{ $document->directionLabel() ? ' · '.$document->directionLabel() : '' }} · {{ $document->protocol_number ? 'Br. '.$document->protocol_number : 'Verzija '.$document->version }}</div>
+                                <div class="truncate text-xs text-zinc-500">{{ local_time($document->document_date ?? $document->created_at)->format('d.m.Y.') }}{{ $document->directionLabel() ? ' · '.$document->directionLabel() : '' }} · {{ $document->protocol_number ? 'Br. '.$document->protocol_number : 'Verzija '.$document->version }}</div>
                             </div>
                             <flux:dropdown align="end">
                                 <flux:button size="xs" variant="ghost" icon="ellipsis-horizontal" aria-label="Opcije dokumenta" />

@@ -72,7 +72,7 @@ new class extends Component {
                         </span>
                         <span class="min-w-0 flex-1">
                             <span @class(['line-clamp-2 text-sm', 'font-semibold' => ! $notification->read_at])>{{ $notification->data['title'] ?? 'Obavijest' }}</span>
-                            <span class="mt-0.5 block text-xs text-zinc-500">{{ $notification->created_at->format('d.m.Y. H:i') }}</span>
+                            <span class="mt-0.5 block text-xs text-zinc-500">{{ local_time($notification->created_at)->format('d.m.Y. H:i') }}</span>
                         </span>
                         @unless($notification->read_at)<span class="mt-2 size-2 shrink-0 rounded-full bg-blue-500" aria-label="Nepročitano"></span>@endunless
                     </button>

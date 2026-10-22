@@ -31,7 +31,7 @@ class ProjectWorkflowService
             $old = $project->status;
             $updates = ['status' => $status];
             if ($status === ProjectStatus::Completed) {
-                $updates['completed_at'] = $project->completed_at ?? now()->toDateString();
+                $updates['completed_at'] = $project->completed_at ?? local_today()->toDateString();
                 $updates['completion_note'] = $reason;
             }
             if ($status !== ProjectStatus::Completed) {

@@ -81,7 +81,7 @@ new #[Title('Historija projekta')] class extends Component {
                         <p>{{ ActivityPresenter::sentence($activity) }}</p>
                         @if($subject = ActivityPresenter::subjectLabel($activity))<p class="text-xs text-zinc-500">{{ $subject }}</p>@endif
                     </div>
-                    <time class="shrink-0 text-xs text-zinc-500" datetime="{{ $activity->created_at->toIso8601String() }}" title="{{ $activity->created_at->format('d.m.Y. H:i') }}">{{ $activity->created_at->format('d.m.Y.') }}</time>
+                    <time class="shrink-0 text-xs text-zinc-500" datetime="{{ $activity->created_at->toIso8601String() }}" title="{{ local_time($activity->created_at)->format('d.m.Y. H:i') }}">{{ local_time($activity->created_at)->format('d.m.Y.') }}</time>
                 </li>
             @empty
                 <li class="p-10 text-center text-sm text-zinc-500">Nema promjena za odabrane filtere.</li>

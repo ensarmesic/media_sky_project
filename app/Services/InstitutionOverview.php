@@ -121,6 +121,6 @@ class InstitutionOverview
             .' (predato '.($item->submitted_at?->format('d.m.Y.') ?? '–')
             .($protocols->has($item->id) ? ', broj protokola '.$protocols[$item->id] : '').')');
 
-        return 'Stavke koje čekaju odgovor – '.$institution->name.' (stanje '.now()->format('d.m.Y.').")\n".$lines->implode("\n");
+        return 'Stavke koje čekaju odgovor – '.$institution->name.' (stanje '.local_time(now())->format('d.m.Y.').")\n".$lines->implode("\n");
     }
 }

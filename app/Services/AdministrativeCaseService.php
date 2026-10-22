@@ -27,7 +27,7 @@ class AdministrativeCaseService
             $data['case_type_id'] ??= CaseType::where('is_active', true)->orderBy('id')->value('id') ?? CaseType::firstOrCreate(['name' => 'Ostalo'])->id;
             $data['case_status_id'] ??= CaseStatus::orderBy('position')->value('id') ?? CaseStatus::firstOrCreate(['system_key' => 'in_preparation'], ['name' => 'U pripremi'])->id;
             $data['responsible_user_id'] ??= $user->id;
-            $data['started_at'] ??= today();
+            $data['started_at'] ??= local_today();
 
             $case = AdministrativeCase::create([...$data, 'created_by' => $user->id]);
             $case->activities()->create(['user_id' => $user->id, 'event_type' => 'created', 'title' => 'Postupak kreiran']);

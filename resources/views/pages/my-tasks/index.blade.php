@@ -44,7 +44,7 @@ new #[Title('Moje stavke')] class extends Component {
             ->orderByRaw('due_date is null')->orderBy('due_date')->orderBy('id')
             ->get();
 
-        $endOfWeek = today()->endOfWeek();
+        $endOfWeek = local_today()->endOfWeek();
         $grouped = $items->groupBy(fn (AdministrativeCaseItem $item) => match (true) {
             $item->isOverdue() => 'overdue',
             $item->status === CaseItemStatus::WaitingResponse => 'waiting',

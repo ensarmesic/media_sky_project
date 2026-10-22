@@ -216,7 +216,7 @@ new class extends Component {
                                 <a href="{{ route('documents.show', $document) }}" @if($document->isPdf()) target="_blank" rel="noopener" @endif class="block truncate text-sm font-medium hover:text-blue-600">{{ $document->name }}</a>
                             @endif
                             <div class="truncate text-xs text-zinc-500">
-                                {{ $document->humanSize() }} · {{ $document->uploader->shortName() }}, {{ $document->created_at->format('d.m.Y.') }}
+                                {{ $document->humanSize() }} · {{ $document->uploader->shortName() }}, {{ local_time($document->created_at)->format('d.m.Y.') }}
                                 @if($document->directionLabel()) · {{ $document->directionLabel() }}@endif
                                 @if($document->protocol_number) · Br. {{ $document->protocol_number }}@endif
                                 @if($document->document_date) · {{ $document->document_date->format('d.m.Y.') }}@endif
@@ -250,7 +250,7 @@ new class extends Component {
                     @if($expandedHistory === $document->id)
                         <ul class="mt-2 ml-12 space-y-1 border-l border-zinc-200 pl-3 text-xs dark:border-zinc-700">
                             @foreach($document->versionHistory() as $previous)
-                                <li class="flex items-center gap-2"><a href="{{ route('documents.download', $previous) }}" class="text-blue-600 hover:underline">Verzija {{ $previous->version }}</a><span class="text-zinc-500">· {{ $previous->original_name }} · {{ $previous->created_at->format('d.m.Y.') }} · {{ $previous->humanSize() }}</span></li>
+                                <li class="flex items-center gap-2"><a href="{{ route('documents.download', $previous) }}" class="text-blue-600 hover:underline">Verzija {{ $previous->version }}</a><span class="text-zinc-500">· {{ $previous->original_name }} · {{ local_time($previous->created_at)->format('d.m.Y.') }} · {{ $previous->humanSize() }}</span></li>
                             @endforeach
                         </ul>
                     @endif

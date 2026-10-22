@@ -17,7 +17,7 @@ class MaximumAgeInHours extends HealthCheck
         $this->failIf($newest === null, 'Nema nijednog backupa.');
         $this->failIf(
             $newest !== null && $newest->date()->lt(now()->subHours($this->hours)),
-            'Najnoviji backup je od '.$newest?->date()->format('d.m.Y. H:i').' (stariji od '.$this->hours.' sati).',
+            'Najnoviji backup je od '.local_time($newest?->date())?->format('d.m.Y. H:i').' (stariji od '.$this->hours.' sati).',
         );
     }
 }

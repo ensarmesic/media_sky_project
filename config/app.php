@@ -67,6 +67,12 @@ return [
 
     'timezone' => 'UTC',
 
+    // Baza i aplikacija rade u UTC; korisniku se vremena prikazuju po lokalnoj zoni
+    // (local_time(), local_today() u app/helpers.php), a scheduler radi po lokalnom satu.
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Sarajevo'),
+
+    'schedule_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Sarajevo'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

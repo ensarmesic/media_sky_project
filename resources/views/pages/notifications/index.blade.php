@@ -74,7 +74,7 @@ new #[Title('Obavijesti')] class extends Component {
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <button type="button" wire:click="open('{{ $notification->id }}')" @class(['text-left text-sm hover:text-blue-600', 'font-semibold' => ! $notification->read_at])>{{ $notification->data['title'] ?? 'Obavijest' }}</button>
-                        <time class="shrink-0 text-xs text-zinc-500" datetime="{{ $notification->created_at->toIso8601String() }}">{{ $notification->created_at->format('d.m.Y. H:i') }}</time>
+                        <time class="shrink-0 text-xs text-zinc-500" datetime="{{ $notification->created_at->toIso8601String() }}">{{ local_time($notification->created_at)->format('d.m.Y. H:i') }}</time>
                     </div>
                     <div class="mt-1 flex flex-wrap gap-x-3 text-xs text-zinc-500">
                         @if($kind)<span>{{ $kind->label() }}</span>@endif

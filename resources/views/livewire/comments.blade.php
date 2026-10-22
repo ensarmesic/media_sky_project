@@ -169,8 +169,8 @@ new class extends Component {
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
                             <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $comment->user->name }}</span>
-                            <time datetime="{{ $comment->created_at->toIso8601String() }}" title="{{ $comment->created_at->format('d.m.Y. H:i') }}">{{ $comment->created_at->format('d.m.Y. H:i') }}</time>
-                            @if($comment->edited_at)<span title="Uređeno {{ $comment->edited_at->format('d.m.Y. H:i') }}">· uređeno</span>@endif
+                            <time datetime="{{ $comment->created_at->toIso8601String() }}" title="{{ local_time($comment->created_at)->format('d.m.Y. H:i') }}">{{ local_time($comment->created_at)->format('d.m.Y. H:i') }}</time>
+                            @if($comment->edited_at)<span title="Uređeno {{ local_time($comment->edited_at)->format('d.m.Y. H:i') }}">· uređeno</span>@endif
                             <span class="ml-auto flex gap-2 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
                                 @can('update', $comment)<button type="button" wire:click="edit({{ $comment->id }})" class="hover:text-blue-600">Uredi</button>@endcan
                                 @can('delete', $comment)<button type="button" wire:click="delete({{ $comment->id }})" wire:confirm="Obrisati komentar?" class="hover:text-red-600">Obriši</button>@endcan
@@ -200,7 +200,7 @@ new class extends Component {
                 @php($activity = $entry['model'])
                 <li class="flex gap-3 text-sm text-zinc-600 dark:text-zinc-300" wire:key="activity-{{ $activity->id }}">
                     <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 dark:bg-zinc-800"><flux:icon :name="$activity->icon()" variant="micro" class="size-4" /></span>
-                    <p class="min-w-0 flex-1 pt-1.5">{{ ActivityPresenter::sentence($activity) }} <span class="text-xs text-zinc-400">· {{ $activity->created_at->format('d.m.Y.') }}</span></p>
+                    <p class="min-w-0 flex-1 pt-1.5">{{ ActivityPresenter::sentence($activity) }} <span class="text-xs text-zinc-400">· {{ local_time($activity->created_at)->format('d.m.Y.') }}</span></p>
                 </li>
             @endif
         @empty

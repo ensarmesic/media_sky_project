@@ -263,7 +263,7 @@ class AdministrativeCaseItemService
             return;
         }
         $oldName = $case->status?->name;
-        $case->update(['case_status_id' => $target->id, 'closed_at' => $isComplete ? now()->toDateString() : null]);
+        $case->update(['case_status_id' => $target->id, 'closed_at' => $isComplete ? local_today()->toDateString() : null]);
         $case->activities()->create(['user_id' => $user->id, 'event_type' => $isComplete ? 'completed' : 'reopened', 'title' => $isComplete ? 'Postupak završen' : 'Postupak ponovo otvoren', 'description' => $oldName.' → '.$target->name]);
     }
 }

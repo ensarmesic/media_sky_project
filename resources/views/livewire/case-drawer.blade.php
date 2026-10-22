@@ -103,7 +103,7 @@ new class extends Component {
                                     <a href="{{ route('documents.show', $document) }}" target="_blank" rel="noopener" class="block truncate text-sm font-medium hover:text-blue-600">{{ $document->name }}</a>
                                     <div class="truncate text-xs text-zinc-500">
                                         {{ match (true) { $owner instanceof AdministrativeCaseItem => 'Stavka: '.$owner->name, $owner instanceof Comment => 'Prilog komentaru', default => 'Postupak' } }}
-                                        · {{ ($document->document_date ?? $document->created_at)->format('d.m.Y.') }}{{ $document->protocol_number ? ' · Br. '.$document->protocol_number : '' }}
+                                        · {{ local_time($document->document_date ?? $document->created_at)->format('d.m.Y.') }}{{ $document->protocol_number ? ' · Br. '.$document->protocol_number : '' }}
                                     </div>
                                 </div>
                                 <flux:button size="xs" variant="ghost" icon="arrow-down-tray" :href="route('documents.download', $document)" aria-label="Preuzmi {{ $document->name }}" />

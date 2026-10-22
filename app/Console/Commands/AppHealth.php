@@ -14,7 +14,7 @@ class AppHealth extends Command
 
     public function handle(SystemHealth $health): int
     {
-        $format = fn (?\DateTimeInterface $time) => $time?->format('d.m.Y. H:i:s') ?? 'nikad';
+        $format = fn (?\DateTimeInterface $time) => local_time($time)?->format('d.m.Y. H:i:s') ?? 'nikad';
 
         $this->table(['Provjera', 'Stanje'], [
             ['Zadnje pokretanje schedulera', $format($health->schedulerLastRun())],

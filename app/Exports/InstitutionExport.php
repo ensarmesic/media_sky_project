@@ -17,7 +17,7 @@ final class InstitutionExport
     {
         $name = trim((string) preg_replace('/[^A-Za-z0-9_-]+/', '-', Str::ascii($this->institution->name)), '-');
 
-        return ($name !== '' ? $name : 'institucija').'_'.now()->format('d-m-Y').'.xlsx';
+        return ($name !== '' ? $name : 'institucija').'_'.local_time(now())->format('d-m-Y').'.xlsx';
     }
 
     public function store(string $path): void

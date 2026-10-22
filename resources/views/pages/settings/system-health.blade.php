@@ -92,8 +92,8 @@ new #[Title('Stanje sistema')] class extends Component {
 
             <dl class="grid gap-3 sm:grid-cols-2">
                 @foreach([
-                    ['Zadnje pokretanje schedulera', $health->schedulerLastRun()?->format('d.m.Y. H:i') ?? 'nikad', 'clock'],
-                    ['Zadnji obrađeni job', $health->queueLastProcessed()?->format('d.m.Y. H:i') ?? 'nikad', 'queue-list'],
+                    ['Zadnje pokretanje schedulera', local_time($health->schedulerLastRun())?->format('d.m.Y. H:i') ?? 'nikad', 'clock'],
+                    ['Zadnji obrađeni job', local_time($health->queueLastProcessed())?->format('d.m.Y. H:i') ?? 'nikad', 'queue-list'],
                     ['Jobova na čekanju', (string) $health->pendingJobs(), 'inbox-stack'],
                     ['Neuspjelih jobova', (string) $health->failedJobs(), 'exclamation-circle'],
                 ] as [$label, $value, $icon])
@@ -113,7 +113,7 @@ new #[Title('Stanje sistema')] class extends Component {
                     @foreach($health->backups() as $backup)
                         <li class="grid gap-1 p-3 text-sm sm:grid-cols-4" wire:key="backup-{{ $backup['disk'] }}">
                             <span class="font-medium">{{ $backup['disk'] }}@unless($backup['reachable'])<span class="ml-1 text-xs text-red-600">nedostupan</span>@endunless</span>
-                            <span><span class="text-xs text-zinc-500">Zadnji uspješan:</span> {{ $backup['newest']?->format('d.m.Y. H:i') ?? 'nikad' }}</span>
+                            <span><span class="text-xs text-zinc-500">Zadnji uspješan:</span> {{ local_time($backup['newest'])?->format('d.m.Y. H:i') ?? 'nikad' }}</span>
                             <span><span class="text-xs text-zinc-500">Veličina:</span> {{ SystemHealth::humanBytes($backup['size']) }}</span>
                             <span><span class="text-xs text-zinc-500">Čuva se:</span> {{ $backup['count'] }} ({{ SystemHealth::humanBytes($backup['used']) }})</span>
                         </li>
@@ -136,7 +136,7 @@ new #[Title('Stanje sistema')] class extends Component {
                     @forelse($this->failedJobs as $job)
                         <li class="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between" wire:key="failed-{{ $job->uuid }}">
                             <div class="min-w-0">
-                                <p class="text-sm font-medium">{{ class_basename($job->name) }} <span class="text-xs font-normal text-zinc-500">· {{ $job->queue }} · {{ \Carbon\CarbonImmutable::parse($job->failed_at)->format('d.m.Y. H:i') }}</span></p>
+                                <p class="text-sm font-medium">{{ class_basename($job->name) }} <span class="text-xs font-normal text-zinc-500">· {{ $job->queue }} · {{ local_time(\Carbon\CarbonImmutable::parse($job->failed_at))->format('d.m.Y. H:i') }}</span></p>
                                 <p class="mt-0.5 line-clamp-2 break-all text-xs text-red-600 dark:text-red-400" title="{{ $job->error }}">{{ $job->error }}</p>
                             </div>
                             <div class="flex shrink-0 gap-2">

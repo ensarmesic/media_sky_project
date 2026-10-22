@@ -4,7 +4,7 @@
 <body>
     @php($progress = $project->administrativeProgressPercentage())
     <table style="width:100%;margin-bottom:14px"><tr><td>@if(extension_loaded('gd'))<img src="{{ public_path('img/logo-light.png') }}" alt="Media Sky" style="height:42px">@else<strong style="font-size:16px;color:#1d6fb8">Media Sky</strong> <span style="color:#6cb33f">Telekomunikacije</span>@endif</td><td style="text-align:right" class="muted">{{ config('app.name') }}</td></tr></table>
-    <h1>{{ $project->name }}</h1><div class="muted">{{ $project->code }} · Izvještaj generisan {{ now()->format('d.m.Y. H:i') }}</div>
+    <h1>{{ $project->name }}</h1><div class="muted">{{ $project->code }} · Izvještaj generisan {{ local_time(now())->format('d.m.Y. H:i') }}</div>
 
     <h2>Osnovne informacije</h2>
     <table class="meta">

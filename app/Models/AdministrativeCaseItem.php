@@ -69,11 +69,11 @@ class AdministrativeCaseItem extends Model
             }
             // Prelaz u "Predato" postavlja datum predaje ako je prazan.
             if ($item->status === CaseItemStatus::Submitted && $item->submitted_at === null) {
-                $item->submitted_at = today();
+                $item->submitted_at = local_today();
             }
             // Prelaz u "Završeno" postavlja datum odgovora (ako je prazan) i vrijeme završetka.
             if ($item->status === CaseItemStatus::Completed) {
-                $item->response_at ??= today();
+                $item->response_at ??= local_today();
                 $item->completed_at ??= now();
             } else {
                 $item->completed_at = null;
@@ -95,13 +95,13 @@ class AdministrativeCaseItem extends Model
     /** Kasni = rok je prošao (prije danas), a stavka nije završena ni otkazana. */
     public function isOverdue(): bool
     {
-        return $this->isOpen() && $this->due_date !== null && $this->due_date->lt(today());
+        return $this->isOpen() && $this->due_date !== null && $this->due_date->lt(local_today());
     }
 
     /** Rok je danas ili u narednih $days dana. */
     public function isDueWithin(int $days): bool
     {
-        return $this->isOpen() && $this->due_date !== null && $this->due_date->between(today(), today()->addDays($days));
+        return $this->isOpen() && $this->due_date !== null && $this->due_date->between(local_today(), local_today()->addDays($days));
     }
 
     public function isDueSoon(): bool
@@ -112,7 +112,7 @@ class AdministrativeCaseItem extends Model
     /** Broj dana do roka (negativno = kasni). */
     public function daysUntilDue(): ?int
     {
-        return $this->due_date === null ? null : (int) today()->diffInDays($this->due_date, false);
+        return $this->due_date === null ? null : (int) local_today()->diffInDays($this->due_date, false);
     }
 
     /** Dana čeka odgovor = danas − datum predaje (samo za "Čeka odgovor"). */
@@ -122,7 +122,7 @@ class AdministrativeCaseItem extends Model
             return null;
         }
 
-        return (int) $this->submitted_at->diffInDays(today());
+        return (int) $this->submitted_at->diffInDays(local_today());
     }
 
     /** Naziv institucije ili slobodno upisani primalac. */
@@ -148,7 +148,7 @@ class AdministrativeCaseItem extends Model
      */
     public function scopeOverdue(Builder $query): Builder
     {
-        return $this->scopeOpen($query)->whereDate('due_date', '<', today());
+        return $this->scopeOpen($query)->whereDate('due_date', '<', local_today());
     }
 
     /** @return BelongsTo<AdministrativeCase, $this> */
