@@ -19,7 +19,7 @@ Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4 i Vite, na PHP 8.4. Baza je tren
 .\start.ps1
 ```
 
-Otvara server (http://localhost:8000, s OPcache-om ~4x brže), queue worker i scheduler, svaki u svom prozoru. Prva prijava: `admin` / `password` (promijeniti u Postavke → Profil / Sigurnost).
+Otvara jedan prozor sa serverom (http://localhost:8000, s OPcache-om ~4x brže); queue worker i scheduler rade skriveno u pozadini (logovi: `storageogsqueue.log`, `scheduler.log`) i gase se zajedno s prozorom (Ctrl+C ili X). Prva prijava: `admin` / `password` (promijeniti u Postavke → Profil / Sigurnost).
 
 **Lokalno nikad ne pokretati `php artisan config:cache` ni `php artisan optimize`** — s keširanom konfiguracijom testovi bi radili nad pravom bazom (testovi se sada sami zaustave ako se to desi).
 
