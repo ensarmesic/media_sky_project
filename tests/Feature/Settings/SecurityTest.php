@@ -23,9 +23,6 @@ class SecurityTest extends TestCase
             'confirm' => true,
             'confirmPassword' => true,
         ]);
-        Features::passkeys([
-            'confirmPassword' => true,
-        ]);
     }
 
     public function test_security_settings_page_can_be_rendered(): void
@@ -38,8 +35,9 @@ class SecurityTest extends TestCase
 
         $response->assertOk();
 
-        $response->assertSee('Passkeyji');
-        $response->assertSee('Još nema passkeyja');
+        // Passkey je isključen u config/fortify.php.
+        $response->assertDontSee('Passkeyji');
+        $response->assertDontSee('Još nema passkeyja');
         $response->assertSee('Dvofaktorska autentifikacija');
         $response->assertSee('Uključi 2FA');
     }
