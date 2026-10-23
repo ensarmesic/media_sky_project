@@ -32,7 +32,8 @@ Laravel 10 više nema sigurnosnih ispravki. Tri poznata propusta nemaju ispravku
 - Lokalna baza je prebačena sa SQLite-a na MySQL (servis MySQL80, baza `media_sky_project`, korisnik `mediasky`). Svi podaci su preneseni (34 tabele, 110 redova). `database/database.sqlite` je ostao netaknut, a kopija je u `storage/app/backups/`.
 - `app:copy-database`: prazan tekst u kolonama za datum ili broj prenosi se kao `NULL` (MySQL ga inače odbija).
 - `DB_DUMP_BINARY_PATH`: folder s `mysqldump` za `app:backup` kad nije u PATH-u (Windows).
-- Testovi se mogu pokrenuti i na `media_sky_project_testing`, a nikad ne diraju pravu bazu.
+- **Sve je na MySQL-u:** testovi (`phpunit.xml`) rade na `media_sky_project_testing`, podrazumijevana konekcija u configu i `.env.example` je `mysql`, a CI (GitHub Actions) ima MySQL 8.0 servis i pokreće se i za granu `laravel10-php81`. Dokumentacija je ažurirana.
+- Stari `database/database.sqlite` je obrisan. Provjerena kopija je u `storage/app/backups/database-before-mysql-20261023-1549.sqlite`. Alati za prenos iz SQLite-a (`app:copy-database`) i backup SQLite fajla ostaju za prenos starih podataka.
 
 ### Deploy na staging (23. 10. 2026.)
 - http://10.64.43.250:8091/ (`/var/www/html/ensar-app`, baza `ensar_app`). Uvezeni su lokalni podaci: 1 korisnik, 2 projekta, 4 postupka i 15 stavki s historijom.

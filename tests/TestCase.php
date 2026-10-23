@@ -11,8 +11,8 @@ use RuntimeException;
 abstract class TestCase extends BaseTestCase
 {
     /**
-     * Zaštita prave baze: testovi (RefreshDatabase = migrate:fresh) smiju raditi samo nad SQLite bazom u memoriji
-     * ili nad testnom bazom "*_testing" (npr. MySQL: DB_CONNECTION=mysql DB_DATABASE=mediasky_testing).
+     * Zaštita prave baze: testovi (RefreshDatabase = migrate:fresh) smiju raditi samo nad testnom bazom "*_testing"
+     * (phpunit.xml: MySQL media_sky_project_testing) ili SQLite bazom u memoriji.
      * Ako je konfiguracija keširana (php artisan config:cache / optimize), phpunit.xml se ignoriše i testovi bi
      * obrisali stvarne podatke — zato se tada odmah zaustavljaju, prije bilo kakve migracije.
      */
@@ -32,7 +32,7 @@ abstract class TestCase extends BaseTestCase
 
         $connection = (string) $app['config']->get('database.default');
         $database = (string) $app['config']->get("database.connections.{$connection}.database");
-        // Dozvoljeno: SQLite u memoriji ili posebna testna baza čije ime završava na "_testing" (npr. MySQL).
+        // Dozvoljeno: posebna testna baza čije ime završava na "_testing" ili SQLite u memoriji.
         if ($database !== ':memory:' && ! str_ends_with($database, '_testing')) {
             throw new RuntimeException(
                 "Testovi su zaustavljeni da ne obrišu pravu bazu ({$connection}: {$database}). "

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - laravel10-php81
   pull_request:
 
 permissions:
@@ -12,6 +13,26 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+
+    # Ista baza kao lokalno i na serveru (MySQL 8); testovi koriste media_sky_project_testing (phpunit.xml).
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: media_sky_project
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: root
 
     steps:
       - name: Checkout code
@@ -30,6 +51,9 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
+
+      - name: Create testing database
+        run: mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE media_sky_project_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 
       - name: Setup Application
         run: composer setup

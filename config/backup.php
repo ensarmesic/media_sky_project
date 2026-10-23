@@ -91,7 +91,7 @@ return [
              */
             // MySQL: mysqldump. SQLite: app:backup pravi snimak (VACUUM INTO) i ne treba sqlite3 alat.
             'databases' => [
-                env('DB_CONNECTION', 'sqlite'),
+                env('DB_CONNECTION', 'mysql'),
             ],
         ],
 

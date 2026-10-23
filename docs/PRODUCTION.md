@@ -69,7 +69,7 @@ schtasks /Create /TN "MediaSkyScheduler" /SC MINUTE /MO 1 /RU SYSTEM /TR "C:\php
 
 ```bash
 php artisan down
-git pull                      # ili kopirati novi folder preko starog (bez .env, storage/ i database/database.sqlite)
+git pull                      # ili kopirati novi folder preko starog (bez .env i storage/)
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 npm ci && npm run build
@@ -91,8 +91,8 @@ php artisan app:health        # provjera da scheduler i queue rade
 Backup radi `spatie/laravel-backup` kroz komandu `php artisan app:backup`:
 
 - **Sadržaj:** baza + dokumenti (`storage/app/private`, gdje ih sprema `ProjectDocument::DISK = local`). Bez `vendor`, `node_modules`, keša i logova.
-  - MySQL: dump preko `mysqldump` (mora biti dostupan na serveru — dolazi uz MySQL; ako nije u PATH-u, u `mysql` konekciji u `config/database.php` dodati `'dump' => ['dump_binary_path' => '/putanja/do/mysql/bin']`).
-  - SQLite: konzistentan snimak baze (`VACUUM INTO`), bez potrebe za `sqlite3` alatom.
+  - MySQL: dump preko `mysqldump` (mora biti dostupan na serveru — dolazi uz MySQL; ako nije u PATH-u, u `.env` postaviti `DB_DUMP_BINARY_PATH` na folder s `mysqldump`).
+  - (Stari SQLite fajl, ako se ikad koristi: konzistentan snimak preko `VACUUM INTO`.)
 - **Raspored:** backup svaki dan u 02:00, čišćenje starih u 03:00, provjera starosti u 04:00 (scheduler mora raditi).
 - **Čuvanje:** svi backupi 7 dana, dnevni 30 dana, sedmični 8 sedmica, mjesečni 6 mjeseci.
 - **Upozorenje:** ako backup ne uspije ili je najnoviji stariji od 26 sati, svi admini dobiju obavijest (zvono + e-mail ako ga imaju i nisu ga isključili).
@@ -123,7 +123,6 @@ Arhiva se može zaključati lozinkom: `BACKUP_ARCHIVE_PASSWORD=...` (lozinku ču
 3. **Dokumenti:** sadržaj foldera `.../storage/app/private` iz arhive kopirati u `storage/app/private` aplikacije (preko postojećeg).
 4. **Baza:**
    - MySQL: `mysql -u <korisnik> -p <baza> < db-dumps/mysql-<baza>.sql`
-   - SQLite: fajl `.../storage/app/backup-temp/sqlite/database.sqlite` iz arhive kopirati preko `database/database.sqlite`.
 5. `php artisan migrate --force` (ako je backup stariji od zadnjeg deploya), `php artisan optimize:clear`, `php artisan queue:restart`.
 6. `php artisan up` i provjeriti nekoliko projekata, stavki i preuzimanje dokumenata.
 
