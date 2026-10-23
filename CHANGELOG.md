@@ -28,6 +28,12 @@ Laravel 10 više nema sigurnosnih ispravki. Tri poznata propusta nemaju ispravku
 - `.env.staging.example`: postavke za staging (MySQL `ensar_app`, mail u log, queue `sync`, upload do 2 MB).
 - **Migracije na MySQL-u:** dva foreign key-a i jedan indeks dobili su kraća, eksplicitna imena, jer je automatsko ime bilo duže od 64 znaka (MySQL limit). Na SQLite-u se to nije vidjelo.
 
+### Lokalno na MySQL-u (23. 10. 2026.)
+- Lokalna baza je prebačena sa SQLite-a na MySQL (servis MySQL80, baza `media_sky_project`, korisnik `mediasky`). Svi podaci su preneseni (34 tabele, 110 redova). `database/database.sqlite` je ostao netaknut, a kopija je u `storage/app/backups/`.
+- `app:copy-database`: prazan tekst u kolonama za datum ili broj prenosi se kao `NULL` (MySQL ga inače odbija).
+- `DB_DUMP_BINARY_PATH`: folder s `mysqldump` za `app:backup` kad nije u PATH-u (Windows).
+- Testovi se mogu pokrenuti i na `media_sky_project_testing`, a nikad ne diraju pravu bazu.
+
 ### Deploy na staging (23. 10. 2026.)
 - http://10.64.43.250:8091/ (`/var/www/html/ensar-app`, baza `ensar_app`). Uvezeni su lokalni podaci: 1 korisnik, 2 projekta, 4 postupka i 15 stavki s historijom.
 - Prazan `planned_end_date` (`''` u SQLite-u) je pri prenosu pretvoren u `NULL`.

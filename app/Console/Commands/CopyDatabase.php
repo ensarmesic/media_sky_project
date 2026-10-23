@@ -109,10 +109,20 @@ class CopyDatabase extends Command
             Schema::connection($from)->getColumnListing($table),
             Schema::connection($to)->getColumnListing($table),
         ));
+        // SQLite dozvoljava '' u kolonama za datum/broj, MySQL ne: takve vrijednosti idu kao NULL ("nije uneseno").
+        $strict = collect(Schema::connection($to)->getColumns($table))
+            ->filter(fn (mixed $column): bool => is_array($column) && preg_match('/date|time|year|int|decimal|numeric|float|double|real/i', (string) ($column['type_name'] ?? '')) === 1)
+            ->pluck('name')->flip()->all();
         $copied = 0;
         $batch = [];
         foreach ($source->table($table)->select($columns)->cursor() as $row) {
-            $batch[] = (array) $row;
+            $row = (array) $row;
+            foreach ($row as $column => $value) {
+                if ($value === '' && isset($strict[$column])) {
+                    $row[$column] = null;
+                }
+            }
+            $batch[] = $row;
             if (count($batch) >= self::CHUNK) {
                 $target->table($table)->insert($batch);
                 $copied += count($batch);

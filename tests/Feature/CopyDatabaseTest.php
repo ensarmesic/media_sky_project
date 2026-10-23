@@ -30,6 +30,8 @@ class CopyDatabaseTest extends TestCase
         $categoryId = $source->table('project_categories')->insertGetId(['name' => 'Telekomunikacije', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
         $projectId = $source->table('projects')->insertGetId([
             'code' => 'FTTH-1', 'name' => 'FTTH Banovići', 'category_id' => $categoryId, 'start_date' => '2026-04-24', 'status' => 'in_progress',
+            // SQLite dozvoljava prazan tekst u datumu; u cilju (MySQL) to mora biti NULL.
+            'planned_end_date' => '', 'description' => '',
             'responsible_user_id' => $userId, 'created_by' => $userId, 'progress' => 40, 'created_at' => now(), 'updated_at' => now(),
         ]);
         $source->table('project_user')->insert(['project_id' => $projectId, 'user_id' => $userId, 'role' => 'manager', 'created_at' => now(), 'updated_at' => now()]);
@@ -57,6 +59,8 @@ class CopyDatabaseTest extends TestCase
 
         $target = DB::connection('copy_target');
         $this->assertSame(1, $target->table('projects')->where('code', 'FTTH-1')->count());
+        $this->assertNull($target->table('projects')->value('planned_end_date'));
+        $this->assertSame('', $target->table('projects')->value('description'));
         $this->assertSame(1, $target->table('project_user')->count());
         $this->assertSame(0, $target->table('sessions')->count());
 
