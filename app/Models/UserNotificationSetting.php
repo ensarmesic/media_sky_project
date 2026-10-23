@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\NotificationKind;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,9 +18,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['user_id', 'email_enabled', 'database_enabled', 'daily_digest', 'digest_hour', 'muted_kinds'])]
 class UserNotificationSetting extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['user_id', 'email_enabled', 'database_enabled', 'daily_digest', 'digest_hour', 'muted_kinds'];
+
+    /** @var array<string, string> */
+    protected $casts = ['email_enabled' => 'boolean', 'database_enabled' => 'boolean', 'daily_digest' => 'boolean', 'digest_hour' => 'integer', 'muted_kinds' => 'array'];
+
     /**
      * Podrazumijevane vrijednosti moraju postojati i na modelu, jer firstOrCreate()
      * ne učitava DB default vrijednosti — bez ovoga prvo obavještenje nema kanala.
@@ -32,11 +36,6 @@ class UserNotificationSetting extends Model
         'daily_digest' => false,
         'digest_hour' => 7,
     ];
-
-    protected function casts(): array
-    {
-        return ['email_enabled' => 'boolean', 'database_enabled' => 'boolean', 'daily_digest' => 'boolean', 'digest_hour' => 'integer', 'muted_kinds' => 'array'];
-    }
 
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo

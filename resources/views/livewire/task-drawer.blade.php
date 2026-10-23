@@ -364,7 +364,7 @@ new class extends Component {
                     <div>
                         @if($canEdit)
                             <label for="task-title-{{ $task->id }}" class="sr-only">Naziv stavke</label>
-                            <input id="task-title-{{ $task->id }}" type="text" wire:model.blur="form.name" x-on:keydown.enter.prevent="$el.blur()"
+                            <input id="task-title-{{ $task->id }}" type="text" wire:model.live.blur="form.name" x-on:keydown.enter.prevent="$el.blur()"
                                 class="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xl font-semibold hover:border-zinc-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:hover:border-zinc-700" />
                             <flux:error name="form.name" />
                         @else
@@ -426,7 +426,7 @@ new class extends Component {
                         </div>
                         @if($canEdit)
                             <div x-show="editing" x-cloak>
-                                <textarea x-ref="description" wire:model.blur="form.description" x-on:blur="editing = false" rows="5" aria-label="Opis stavke"
+                                <textarea x-ref="description" wire:model.live.blur="form.description" x-on:blur="editing = false" rows="5" aria-label="Opis stavke"
                                     class="w-full rounded-lg border border-zinc-200 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-zinc-700 dark:bg-zinc-800"></textarea>
                             </div>
                             <flux:error name="form.description" />
@@ -486,7 +486,7 @@ new class extends Component {
                             @foreach($this->institutions as $institution)<option value="{{ $institution->id }}">{{ $institution->name }}</option>@endforeach
                         </flux:select>
                         @if(! $task->institution_id)
-                            <flux:input wire:model.blur="form.recipient" size="sm" placeholder="ili upišite primaoca" aria-label="Primalac" :disabled="! $canEdit" />
+                            <flux:input wire:model.live.blur="form.recipient" size="sm" placeholder="ili upišite primaoca" aria-label="Primalac" :disabled="! $canEdit" />
                         @endif
                     </div>
                     <div>

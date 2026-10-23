@@ -7,7 +7,6 @@ use App\Enums\CaseItemStatus;
 use App\Enums\CaseItemType;
 use App\Enums\CaseOutcome;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,9 +51,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property-read Institution|null $institution
  * @property-read User|null $responsible
  */
-#[Fillable(['administrative_case_id', 'name', 'description', 'type', 'status', 'priority', 'outcome', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'completed_at', 'response_reminder_interval', 'response_reminded_at', 'deadline_reminded_at', 'overdue_reminded_at', 'is_blocked', 'blocked_reason', 'progress_weight', 'position', 'is_required_for_closure', 'is_active', 'notes', 'created_by'])]
 class AdministrativeCaseItem extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['administrative_case_id', 'name', 'description', 'type', 'status', 'priority', 'outcome', 'responsible_user_id', 'institution_id', 'recipient', 'start_date', 'submitted_at', 'response_at', 'due_date', 'completed_at', 'response_reminder_interval', 'response_reminded_at', 'deadline_reminded_at', 'overdue_reminded_at', 'is_blocked', 'blocked_reason', 'progress_weight', 'position', 'is_required_for_closure', 'is_active', 'notes', 'created_by'];
+
+    /** @var array<string, string> */
+    protected $casts = ['type' => CaseItemType::class, 'status' => CaseItemStatus::class, 'priority' => CaseItemPriority::class, 'outcome' => CaseOutcome::class, 'start_date' => 'date', 'submitted_at' => 'date', 'response_at' => 'date', 'due_date' => 'date', 'completed_at' => 'datetime', 'response_reminded_at' => 'datetime', 'deadline_reminded_at' => 'datetime', 'overdue_reminded_at' => 'datetime', 'is_blocked' => 'boolean', 'progress_weight' => 'decimal:2', 'is_required_for_closure' => 'boolean', 'is_active' => 'boolean'];
+
     protected $attributes = [
         'status' => 'not_started',
         'priority' => 'medium',
@@ -79,11 +83,6 @@ class AdministrativeCaseItem extends Model
                 $item->completed_at = null;
             }
         });
-    }
-
-    protected function casts(): array
-    {
-        return ['type' => CaseItemType::class, 'status' => CaseItemStatus::class, 'priority' => CaseItemPriority::class, 'outcome' => CaseOutcome::class, 'start_date' => 'date', 'submitted_at' => 'date', 'response_at' => 'date', 'due_date' => 'date', 'completed_at' => 'datetime', 'response_reminded_at' => 'datetime', 'deadline_reminded_at' => 'datetime', 'overdue_reminded_at' => 'datetime', 'is_blocked' => 'boolean', 'progress_weight' => 'decimal:2', 'is_required_for_closure' => 'boolean', 'is_active' => 'boolean'];
     }
 
     /** Aktivna = nije uklonjena i nije završena/otkazana. */

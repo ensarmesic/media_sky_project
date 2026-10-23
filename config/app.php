@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\ServiceProvider;
+
 return [
 
     /*
@@ -73,6 +76,9 @@ return [
 
     'schedule_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Sarajevo'),
 
+    // Visina (px) trake koju server ubacuje na vrh stranice (staging: "STAGING ENVIRONMENT"); 0 = nema trake.
+    'top_banner_offset' => (int) env('APP_TOP_BANNER_OFFSET', 0),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
@@ -128,5 +134,22 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Autoloaded Service Providers / Class Aliases (Laravel 10)
+    |--------------------------------------------------------------------------
+    */
+
+    'providers' => ServiceProvider::defaultProviders()->merge([
+        App\Providers\AppServiceProvider::class,
+        App\Providers\EventServiceProvider::class,
+        App\Providers\FortifyServiceProvider::class,
+        App\Providers\RouteServiceProvider::class,
+    ])->toArray(),
+
+    'aliases' => Facade::defaultAliases()->merge([
+        //
+    ])->toArray(),
 
 ];

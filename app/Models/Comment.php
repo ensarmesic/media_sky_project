@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -21,15 +20,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
  */
-#[Fillable(['commentable_type', 'commentable_id', 'user_id', 'body', 'edited_at'])]
 class Comment extends Model
 {
     use SoftDeletes;
 
-    protected function casts(): array
-    {
-        return ['edited_at' => 'datetime'];
-    }
+    /** @var list<string> */
+    protected $fillable = ['commentable_type', 'commentable_id', 'user_id', 'body', 'edited_at'];
+
+    /** @var array<string, string> */
+    protected $casts = ['edited_at' => 'datetime'];
 
     /** @return MorphTo<Model, $this> */
     public function commentable(): MorphTo

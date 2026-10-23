@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -18,9 +17,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['linkable_type', 'linkable_id', 'user_id', 'title', 'url'])]
 class Link extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['linkable_type', 'linkable_id', 'user_id', 'title', 'url'];
+
     /** @return MorphTo<Model, $this> */
     public function linkable(): MorphTo
     {

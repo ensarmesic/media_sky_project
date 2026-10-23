@@ -8,7 +8,6 @@ use App\Enums\NotificationKind;
 use App\Services\NotificationDispatchService;
 use App\Services\ProjectActivityService;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -39,9 +38,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $replaced_by_id
  * @property bool $is_archived
  */
-#[Fillable(['project_id', 'administrative_case_id', 'administrative_case_item_id', 'external_system', 'external_document_id', 'protocol_number', 'title', 'document_type', 'direction', 'url', 'source_app', 'document_date', 'description', 'version', 'replaced_by_id', 'is_archived', 'transferred_at', 'institution_id', 'sync_status', 'last_synced_at'])]
 class DocumentReference extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['project_id', 'administrative_case_id', 'administrative_case_item_id', 'external_system', 'external_document_id', 'protocol_number', 'title', 'document_type', 'direction', 'url', 'source_app', 'document_date', 'description', 'version', 'replaced_by_id', 'is_archived', 'transferred_at', 'institution_id', 'sync_status', 'last_synced_at'];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'direction' => DocumentDirection::class,
+        'sync_status' => DocumentSyncStatus::class,
+        'document_date' => 'date',
+        'transferred_at' => 'date',
+        'version' => 'integer',
+        'replaced_by_id' => 'integer',
+        'is_archived' => 'boolean',
+        'last_synced_at' => 'datetime',
+    ];
+
     protected static function booted(): void
     {
         static::created(function (DocumentReference $reference): void {
@@ -63,20 +76,6 @@ class DocumentReference extends Model
                 $reference->document_date?->format('Y-m-d'),
             );
         });
-    }
-
-    protected function casts(): array
-    {
-        return [
-            'direction' => DocumentDirection::class,
-            'sync_status' => DocumentSyncStatus::class,
-            'document_date' => 'date',
-            'transferred_at' => 'date',
-            'version' => 'integer',
-            'replaced_by_id' => 'integer',
-            'is_archived' => 'boolean',
-            'last_synced_at' => 'datetime',
-        ];
     }
 
     /** @return BelongsTo<Project, $this> */

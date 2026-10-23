@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Concerns\LimitsTitleLength;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -24,15 +23,15 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['project_id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'description', 'metadata'])]
 class ProjectActivity extends Model
 {
     use LimitsTitleLength;
 
-    protected function casts(): array
-    {
-        return ['metadata' => 'array'];
-    }
+    /** @var list<string> */
+    protected $fillable = ['project_id', 'user_id', 'event_type', 'subject_type', 'subject_id', 'title', 'description', 'metadata'];
+
+    /** @var array<string, string> */
+    protected $casts = ['metadata' => 'array'];
 
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo

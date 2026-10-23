@@ -6,7 +6,6 @@ use App\Enums\CaseItemStatus;
 use App\Enums\CaseOutcome;
 use App\Enums\CaseProgressStatus;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,13 +38,13 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property CarbonImmutable|null $archived_at
  * @property string|null $icon
  */
-#[Fillable(['project_id', 'name', 'icon', 'description', 'case_type_id', 'institution_id', 'responsible_user_id', 'started_at', 'submitted_at', 'response_due_at', 'reminder_days_before', 'deadline_reminded_at', 'overdue_reminded_at', 'case_status_id', 'outcome', 'notes', 'closed_at', 'progress_weight', 'position', 'is_archived', 'archived_at', 'created_by'])]
 class AdministrativeCase extends Model
 {
-    protected function casts(): array
-    {
-        return ['started_at' => 'date', 'submitted_at' => 'date', 'response_due_at' => 'date', 'reminder_days_before' => 'integer', 'deadline_reminded_at' => 'datetime', 'overdue_reminded_at' => 'datetime', 'closed_at' => 'date', 'outcome' => CaseOutcome::class, 'is_archived' => 'boolean', 'archived_at' => 'datetime'];
-    }
+    /** @var list<string> */
+    protected $fillable = ['project_id', 'name', 'icon', 'description', 'case_type_id', 'institution_id', 'responsible_user_id', 'started_at', 'submitted_at', 'response_due_at', 'reminder_days_before', 'deadline_reminded_at', 'overdue_reminded_at', 'case_status_id', 'outcome', 'notes', 'closed_at', 'progress_weight', 'position', 'is_archived', 'archived_at', 'created_by'];
+
+    /** @var array<string, string> */
+    protected $casts = ['started_at' => 'date', 'submitted_at' => 'date', 'response_due_at' => 'date', 'reminder_days_before' => 'integer', 'deadline_reminded_at' => 'datetime', 'overdue_reminded_at' => 'datetime', 'closed_at' => 'date', 'outcome' => CaseOutcome::class, 'is_archived' => 'boolean', 'archived_at' => 'datetime'];
 
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo

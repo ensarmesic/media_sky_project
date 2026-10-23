@@ -11,7 +11,7 @@ Interna aplikacija Media Sky Telekomunikacije za praćenje projekata i administr
 
 ## Tehnologije
 
-Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4 i Vite, na PHP 8.4. Baza je trenutno SQLite; za produkciju je planiran prelazak na MySQL. Aplikacija nema odvojeni SPA frontend.
+Laravel 10, Livewire 4, Flux UI, Tailwind CSS 4 i Vite. Radi na PHP 8.1 (staging server Mediasky), a lokalno i na novijem PHP-u; vidi CHANGELOG. Baza je trenutno SQLite; za produkciju je planiran prelazak na MySQL. Aplikacija nema odvojeni SPA frontend.
 
 ## Pokretanje na ovom računaru (Windows)
 

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,15 +15,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['administrative_case_item_id', 'title', 'is_done', 'position'])]
 class ChecklistItem extends Model
 {
-    protected $attributes = ['is_done' => false];
+    /** @var list<string> */
+    protected $fillable = ['administrative_case_item_id', 'title', 'is_done', 'position'];
 
-    protected function casts(): array
-    {
-        return ['is_done' => 'boolean', 'position' => 'integer'];
-    }
+    /** @var array<string, string> */
+    protected $casts = ['is_done' => 'boolean', 'position' => 'integer'];
+
+    protected $attributes = ['is_done' => false];
 
     /** @return BelongsTo<AdministrativeCaseItem, $this> */
     public function task(): BelongsTo

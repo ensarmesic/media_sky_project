@@ -59,11 +59,14 @@ class SystemHealth
         $maxPending = (int) config('projectflow.health.max_pending_jobs', 20);
         $warnings = [];
 
+        // Na serveru bez crona (HEALTH_SCHEDULER_EXPECTED=false, npr. staging) nema upozorenja o scheduleru.
         $lastRun = $this->schedulerLastRun();
-        if ($lastRun === null) {
-            $warnings[] = 'Scheduler još nije zabilježio nijedno pokretanje (podsjetnici i dnevni poslovi ne rade).';
-        } elseif ($lastRun->lt(now()->subMinutes($staleMinutes))) {
-            $warnings[] = 'Scheduler nije radio od '.local_time($lastRun)->format('d.m.Y. H:i').' (više od '.$staleMinutes.' min).';
+        if (config('projectflow.health.scheduler_expected', true)) {
+            if ($lastRun === null) {
+                $warnings[] = 'Scheduler još nije zabilježio nijedno pokretanje (podsjetnici i dnevni poslovi ne rade).';
+            } elseif ($lastRun->lt(now()->subMinutes($staleMinutes))) {
+                $warnings[] = 'Scheduler nije radio od '.local_time($lastRun)->format('d.m.Y. H:i').' (više od '.$staleMinutes.' min).';
+            }
         }
 
         $pending = $this->pendingJobs();

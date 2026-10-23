@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Carbon\CarbonImmutable;
 use Database\Factories\ProjectCategoryFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,16 +16,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'description', 'is_active'])]
 class ProjectCategory extends Model
 {
     /** @use HasFactory<ProjectCategoryFactory> */
     use HasFactory;
 
-    protected function casts(): array
-    {
-        return ['is_active' => 'boolean'];
-    }
+    /** @var list<string> */
+    protected $fillable = ['name', 'description', 'is_active'];
+
+    /** @var array<string, string> */
+    protected $casts = ['is_active' => 'boolean'];
 
     /** @return HasMany<Project, $this> */
     public function projects(): HasMany

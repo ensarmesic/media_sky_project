@@ -53,10 +53,10 @@ final class XlsxWorkbook
         foreach ($columns as $width) {
             $sheet->setColumnWidth($width, $index++);
         }
-        $sheet->setSheetView((new SheetView)->withFreezeRow(2));
+        $sheet->setSheetView((new SheetView)->setFreezeRow(2));
 
-        $header = (new Style)->withFontBold(true)->withBackgroundColor('E4E4E7');
-        $this->writer->addRow(Row::fromValuesWithStyle(array_keys($columns), $header));
+        $header = (new Style)->setFontBold()->setBackgroundColor('E4E4E7');
+        $this->writer->addRow(Row::fromValuesWithStyles(array_keys($columns), $header));
 
         $count = 0;
         foreach ($rows as $values) {
@@ -75,7 +75,7 @@ final class XlsxWorkbook
     public static function cell(DateTimeInterface|string|int|float|bool|null $value, ?Style $style = null): Cell
     {
         if ($value instanceof DateTimeInterface) {
-            return Cell::fromValue($value, ($style ?? new Style)->withFormat(self::DATE_FORMAT));
+            return Cell::fromValue($value, ($style ?? new Style)->setFormat(self::DATE_FORMAT));
         }
 
         return Cell::fromValue($value, $style);
@@ -86,12 +86,12 @@ final class XlsxWorkbook
     {
         [$background, $font] = self::COLORS[$color] ?? self::COLORS['zinc'];
 
-        return Cell::fromValue($label, (new Style)->withBackgroundColor($background)->withFontColor($font)->withFontBold(true));
+        return Cell::fromValue($label, (new Style)->setBackgroundColor($background)->setFontColor($font)->setFontBold());
     }
 
     /** Crveni tekst (stavke koje kasne, istekli rokovi). */
     public static function danger(DateTimeInterface|string|null $value): Cell
     {
-        return self::cell($value, (new Style)->withFontColor('DC2626')->withFontBold(true));
+        return self::cell($value, (new Style)->setFontColor('DC2626')->setFontBold());
     }
 }

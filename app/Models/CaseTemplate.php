@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,9 +18,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'description', 'case_type_id', 'institution_id', 'is_active', 'created_by'])]
 class CaseTemplate extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['name', 'description', 'case_type_id', 'institution_id', 'is_active', 'created_by'];
+
     /** @return HasMany<CaseTemplateItem, $this> */
     public function items(): HasMany
     {

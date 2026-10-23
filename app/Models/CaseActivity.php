@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Concerns\LimitsTitleLength;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,15 +18,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['administrative_case_id', 'user_id', 'event_type', 'title', 'description', 'metadata'])]
 class CaseActivity extends Model
 {
     use LimitsTitleLength;
 
-    protected function casts(): array
-    {
-        return ['metadata' => 'array'];
-    }
+    /** @var list<string> */
+    protected $fillable = ['administrative_case_id', 'user_id', 'event_type', 'title', 'description', 'metadata'];
+
+    /** @var array<string, string> */
+    protected $casts = ['metadata' => 'array'];
 
     /** @return BelongsTo<AdministrativeCase, $this> */
     public function administrativeCase(): BelongsTo

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,9 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['project_id', 'user_id', 'previous_progress', 'new_progress', 'reason'])]
 class ProjectProgressChange extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['project_id', 'user_id', 'previous_progress', 'new_progress', 'reason'];
+
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {

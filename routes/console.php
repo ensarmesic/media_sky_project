@@ -8,10 +8,8 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\DailyDigestNotification;
 use App\Services\NotificationDispatchService;
-use App\Services\SystemHealth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
 
 /** Otvoreni zadaci (stavke) aktivnih predmeta koji imaju odgovornu osobu. */
 $openItems = fn (): Builder => AdministrativeCaseItem::query()
@@ -138,16 +136,4 @@ Artisan::command('notifications:send-daily-digest {--all : Pošalji svima s uklj
         });
 })->purpose('Pošalji dnevni sažetak otvorenih obaveza');
 
-// Otkucaj schedulera za "Stanje sistema" i app:health.
-Schedule::call(fn () => app(SystemHealth::class)->recordSchedulerRun())->everyMinute()->name('health:heartbeat');
-
-Schedule::command('items:send-deadline-reminders')->dailyAt('07:00')->withoutOverlapping();
-Schedule::command('cases:send-deadline-reminders')->dailyAt('07:05')->withoutOverlapping();
-Schedule::command('items:send-waiting-reminders')->dailyAt('07:10')->withoutOverlapping();
-// Backup (spatie/laravel-backup): backup u 02:00, čišćenje starih u 03:00, provjera starosti (26 h) u 04:00.
-Schedule::command('app:backup')->dailyAt('02:00')->withoutOverlapping();
-Schedule::command('backup:clean')->dailyAt('03:00')->withoutOverlapping();
-Schedule::command('backup:monitor')->dailyAt('04:00');
-
-// Svaki korisnik bira sat dnevnog sažetka (digest_hour), pa se komanda pokreće svaki sat.
-Schedule::command('notifications:send-daily-digest')->hourly()->withoutOverlapping();
+// Raspored (scheduler) je u App\Console\Kernel::schedule().

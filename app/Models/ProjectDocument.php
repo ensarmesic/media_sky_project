@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,20 +37,20 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|null $protocol_number
  * @property CarbonImmutable|null $document_date
  */
-#[Fillable(['project_id', 'documentable_type', 'documentable_id', 'administrative_case_id', 'administrative_case_item_id', 'uploaded_by', 'name', 'original_name', 'path', 'mime_type', 'size', 'description', 'document_type', 'direction', 'protocol_number', 'document_date', 'version', 'replaced_by_id', 'is_archived'])]
 class ProjectDocument extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['project_id', 'documentable_type', 'documentable_id', 'administrative_case_id', 'administrative_case_item_id', 'uploaded_by', 'name', 'original_name', 'path', 'mime_type', 'size', 'description', 'document_type', 'direction', 'protocol_number', 'document_date', 'version', 'replaced_by_id', 'is_archived'];
+
+    /** @var array<string, string> */
+    protected $casts = ['size' => 'integer', 'version' => 'integer', 'replaced_by_id' => 'integer', 'is_archived' => 'boolean', 'document_date' => 'date'];
+
     public const DISK = 'local';
 
     /** Smjer dokumenta → labela. */
     public const DIRECTIONS = ['outgoing' => 'Izlazni', 'incoming' => 'Ulazni', 'internal' => 'Interni'];
 
     protected $attributes = ['version' => 1, 'is_archived' => false];
-
-    protected function casts(): array
-    {
-        return ['size' => 'integer', 'version' => 'integer', 'replaced_by_id' => 'integer', 'is_archived' => 'boolean', 'document_date' => 'date'];
-    }
 
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo

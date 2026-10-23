@@ -54,10 +54,10 @@ class CopyDatabase extends Command
             return self::FAILURE;
         }
 
-        $tables = collect(Schema::connection($from)->getTableListing(schemaQualified: false))
+        $tables = collect(Schema::connection($from)->getTableListing())
             ->reject(fn (string $table) => in_array($table, self::SKIP, true))
             ->values();
-        $targetTables = collect(Schema::connection($to)->getTableListing(schemaQualified: false));
+        $targetTables = collect(Schema::connection($to)->getTableListing());
 
         $missing = $tables->diff($targetTables);
         if ($missing->isNotEmpty()) {

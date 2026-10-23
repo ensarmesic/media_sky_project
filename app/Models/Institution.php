@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -19,9 +18,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'type', 'address', 'contact_person', 'email', 'phone', 'notes'])]
 class Institution extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['name', 'type', 'address', 'contact_person', 'email', 'phone', 'notes'];
+
     /** @return HasMany<AdministrativeCase, $this> */
     public function administrativeCases(): HasMany
     {

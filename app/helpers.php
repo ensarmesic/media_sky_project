@@ -20,3 +20,35 @@ if (! function_exists('local_today')) {
         return CarbonImmutable::parse(CarbonImmutable::now(config('app.display_timezone'))->toDateString(), config('app.timezone'));
     }
 }
+
+if (! function_exists('password_rules_string')) {
+    /**
+     * Vrijednost HTML atributa passwordrules (pravila lozinke za password managere) iz Password::defaults().
+     * Zamjena za Password::toPasswordRulesString(), koje postoji tek od Laravela 12.
+     */
+    function password_rules_string(): string
+    {
+        $rule = Illuminate\Validation\Rules\Password::defaults();
+        $read = Closure::bind(fn (): array => [$this->min, $this->max, $this->mixedCase, $this->letters, $this->numbers, $this->symbols], $rule, $rule::class);
+        [$min, $max, $mixedCase, $letters, $numbers, $symbols] = $read();
+
+        $parts = ['minlength: '.max(1, (int) $min)];
+        if ($max) {
+            $parts[] = 'maxlength: '.(int) $max;
+        }
+        if ($mixedCase) {
+            $parts[] = 'required: lower';
+            $parts[] = 'required: upper';
+        } elseif ($letters) {
+            $parts[] = 'required: lower, upper';
+        }
+        if ($numbers) {
+            $parts[] = 'required: digit';
+        }
+        if ($symbols) {
+            $parts[] = 'required: special';
+        }
+
+        return implode('; ', $parts).';';
+    }
+}

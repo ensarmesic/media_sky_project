@@ -6,8 +6,6 @@ use App\Enums\GrammaticalGender;
 use App\Enums\UserRole;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,27 +31,24 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $username
  * @property GrammaticalGender|null $grammatical_gender
  */
-#[Fillable(['name', 'username', 'grammatical_gender', 'email', 'password', 'role'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => UserRole::class,
-            'grammatical_gender' => GrammaticalGender::class,
-        ];
-    }
+    /** @var list<string> */
+    protected $fillable = ['name', 'username', 'grammatical_gender', 'email', 'password', 'role'];
+
+    /** @var list<string> */
+    protected $hidden = ['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'role' => UserRole::class,
+        'grammatical_gender' => GrammaticalGender::class,
+    ];
 
     /** @return HasMany<Project, $this> */
     public function managedProjects(): HasMany
@@ -112,7 +107,10 @@ class User extends Authenticatable
      */
     public function initials(): string
     {
-        $initials = Str::initials($this->name, true);
+        // Prvo slovo svake riječi, velikim slovima (Str::initials postoji tek od Laravela 11).
+        $initials = collect(preg_split('/\s+/u', trim($this->name), -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->map(fn (string $word) => Str::upper(Str::substr($word, 0, 1)))
+            ->implode('');
 
         return Str::length($initials) > 1
             ? Str::substr($initials, 0, 1).Str::substr($initials, -1)

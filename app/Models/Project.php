@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\ProjectStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProjectFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,28 +38,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $archived_at
  * @property string|null $current_state
  */
-#[Fillable(['code', 'name', 'description', 'category_id', 'location', 'start_date', 'planned_end_date', 'responsible_user_id', 'status', 'progress', 'notes', 'next_step', 'current_state', 'completion_note', 'completed_at', 'archived_at', 'created_by'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
     use HasFactory, SoftDeletes;
 
+    /** @var list<string> */
+    protected $fillable = ['code', 'name', 'description', 'category_id', 'location', 'start_date', 'planned_end_date', 'responsible_user_id', 'status', 'progress', 'notes', 'next_step', 'current_state', 'completion_note', 'completed_at', 'archived_at', 'created_by'];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'status' => ProjectStatus::class,
+        'start_date' => 'date',
+        'planned_end_date' => 'date',
+        'progress' => 'integer',
+        'completed_at' => 'date',
+        'archived_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
     public const ROLE_MANAGER = 'manager';
 
     public const ROLE_MEMBER = 'member';
-
-    protected function casts(): array
-    {
-        return [
-            'status' => ProjectStatus::class,
-            'start_date' => 'date',
-            'planned_end_date' => 'date',
-            'progress' => 'integer',
-            'completed_at' => 'date',
-            'archived_at' => 'datetime',
-            'deleted_at' => 'datetime',
-        ];
-    }
 
     /**
      * Korisnik vidi projekte kojih je član (ili odgovorna osoba / autor); admin vidi sve.

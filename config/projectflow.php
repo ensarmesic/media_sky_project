@@ -36,6 +36,8 @@ return [
     'health' => [
         // Upozorenje adminu ako scheduler nije radio duže od ovoliko minuta.
         'scheduler_stale_minutes' => (int) env('HEALTH_SCHEDULER_STALE_MINUTES', 10),
+        // false = na ovom serveru namjerno nema crona (staging); bez upozorenja na svakoj stranici.
+        'scheduler_expected' => (bool) env('HEALTH_SCHEDULER_EXPECTED', true),
         // Upozorenje adminu ako je na čekanju više jobova od ovoga.
         'max_pending_jobs' => (int) env('HEALTH_MAX_PENDING_JOBS', 20),
     ],

@@ -1,0 +1,671 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Unable to resolve the template type TKey in call to function collect$#"
+			count: 1
+			path: app/Enums/CaseProgressStatus.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseActivity, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:activities\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseActivity, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:activityLog\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:comments\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:creator\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:documentReferences\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:documents\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:institution\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:items\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:links\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:project\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:responsible\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:status\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseStatus, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseStatus, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCase\\:\\:type\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseType, \\$this\\(App\\\\Models\\\\AdministrativeCase\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseType, App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCase.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItemActivity, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ChecklistItem, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:activities\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItemActivity, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItemActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:activityLog\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:administrativeCase\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:checklistItems\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ChecklistItem, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ChecklistItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:comments\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Comment\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:creator\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:documentReferences\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:documents\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:institution\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:linkedDocumentReferences\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:links\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItem\\:\\:responsible\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\AdministrativeCaseItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItem.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItemActivity\\:\\:item\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\AdministrativeCaseItemActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\AdministrativeCaseItemActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItemActivity.php
+
+		-
+			message: "#^Method App\\\\Models\\\\AdministrativeCaseItemActivity\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\AdministrativeCaseItemActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\AdministrativeCaseItemActivity\\>\\.$#"
+			count: 1
+			path: app/Models/AdministrativeCaseItemActivity.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseActivity\\:\\:administrativeCase\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\CaseActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, App\\\\Models\\\\CaseActivity\\>\\.$#"
+			count: 1
+			path: app/Models/CaseActivity.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseActivity\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\CaseActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\CaseActivity\\>\\.$#"
+			count: 1
+			path: app/Models/CaseActivity.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\CaseStatus\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/CaseStatus.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseStatus\\:\\:administrativeCases\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\CaseStatus\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/CaseStatus.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseTemplateItem, \\$this\\(App\\\\Models\\\\CaseTemplate\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/CaseTemplate.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseTemplate\\:\\:creator\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\CaseTemplate\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\CaseTemplate\\>\\.$#"
+			count: 1
+			path: app/Models/CaseTemplate.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseTemplate\\:\\:institution\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, \\$this\\(App\\\\Models\\\\CaseTemplate\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, App\\\\Models\\\\CaseTemplate\\>\\.$#"
+			count: 1
+			path: app/Models/CaseTemplate.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseTemplate\\:\\:items\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseTemplateItem, \\$this\\(App\\\\Models\\\\CaseTemplate\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\CaseTemplateItem\\>\\.$#"
+			count: 1
+			path: app/Models/CaseTemplate.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseTemplate\\:\\:type\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseType, \\$this\\(App\\\\Models\\\\CaseTemplate\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseType, App\\\\Models\\\\CaseTemplate\\>\\.$#"
+			count: 1
+			path: app/Models/CaseTemplate.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseTemplateItem\\:\\:template\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseTemplate, \\$this\\(App\\\\Models\\\\CaseTemplateItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\CaseTemplate, App\\\\Models\\\\CaseTemplateItem\\>\\.$#"
+			count: 1
+			path: app/Models/CaseTemplateItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\CaseType\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/CaseType.php
+
+		-
+			message: "#^Method App\\\\Models\\\\CaseType\\:\\:administrativeCases\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\CaseType\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/CaseType.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ChecklistItem\\:\\:task\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\ChecklistItem\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\ChecklistItem\\>\\.$#"
+			count: 1
+			path: app/Models/ChecklistItem.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Comment\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Comment.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Comment\\:\\:commentable\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, \\$this\\(App\\\\Models\\\\Comment\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, App\\\\Models\\\\Comment\\>\\.$#"
+			count: 1
+			path: app/Models/Comment.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Comment\\:\\:documents\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Comment\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/Comment.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Comment\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Comment\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\Comment\\>\\.$#"
+			count: 1
+			path: app/Models/Comment.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:administrativeCase\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:administrativeCaseItem\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:institution\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Institution, App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:linkedItems\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:previousVersions\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:project\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Method App\\\\Models\\\\DocumentReference\\:\\:replacedBy\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\DocumentReference\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\DocumentReference, App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/DocumentReference.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Institution\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\Institution\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\Institution\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Institution\\:\\:administrativeCases\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Institution\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Institution\\:\\:documentReferences\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\Institution\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Institution\\:\\:items\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\Institution\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/Institution.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Link\\:\\:linkable\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, \\$this\\(App\\\\Models\\\\Link\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, App\\\\Models\\\\Link\\>\\.$#"
+			count: 1
+			path: app/Models/Link.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Link\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Link\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\Link\\>\\.$#"
+			count: 1
+			path: app/Models/Link.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectProgressChange, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasManyThrough\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 3 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasManyThrough supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Project\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:activities\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectActivity, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:administrativeCases\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCase\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:category\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\ProjectCategory, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\ProjectCategory, App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:creator\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:documentReferences\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\DocumentReference\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:documents\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:items\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasManyThrough\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasManyThrough\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:links\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\Link\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:members\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\User\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:ownDocuments\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:progressChanges\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectProgressChange, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectProgressChange\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\Project\\:\\:responsible\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\Project\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^PHPDoc tag @use contains generic type Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory\\<Database\\\\Factories\\\\ProjectFactory\\> but trait Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory is not generic\\.$#"
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectActivity\\:\\:project\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\ProjectActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectActivity.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectActivity\\:\\:subject\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, \\$this\\(App\\\\Models\\\\ProjectActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectActivity.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectActivity\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\ProjectActivity\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\ProjectActivity\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectActivity.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\ProjectCategory\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/ProjectCategory.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectCategory\\:\\:projects\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\ProjectCategory\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectCategory.php
+
+		-
+			message: "#^PHPDoc tag @use contains generic type Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory\\<Database\\\\Factories\\\\ProjectCategoryFactory\\> but trait Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory is not generic\\.$#"
+			count: 1
+			path: app/Models/ProjectCategory.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:administrativeCase\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCase, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:administrativeCaseItem\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\AdministrativeCaseItem, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:documentable\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\MorphTo\\<Illuminate\\\\Database\\\\Eloquent\\\\Model, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:linkedItems\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:previousVersions\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:project\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:replacedBy\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\ProjectDocument, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\ProjectDocument, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectDocument\\:\\:uploader\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\ProjectDocument\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\ProjectDocument\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectDocument.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectProgressChange\\:\\:project\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\ProjectProgressChange\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\Project, App\\\\Models\\\\ProjectProgressChange\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectProgressChange.php
+
+		-
+			message: "#^Method App\\\\Models\\\\ProjectProgressChange\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\ProjectProgressChange\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\ProjectProgressChange\\>\\.$#"
+			count: 1
+			path: app/Models/ProjectProgressChange.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\User\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\User\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\User\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasOne\\<App\\\\Models\\\\UserNotificationSetting, \\$this\\(App\\\\Models\\\\User\\)\\> in PHPDoc tag @return specifies 2 template types, but class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasOne supports only 1\\: TRelatedModel$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:assignedItems\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem, \\$this\\(App\\\\Models\\\\User\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\AdministrativeCaseItem\\>\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:managedProjects\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\User\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany\\<App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:notificationSetting\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasOne\\<App\\\\Models\\\\UserNotificationSetting, \\$this\\(App\\\\Models\\\\User\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasOne\\<App\\\\Models\\\\UserNotificationSetting\\>\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:projects\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\Project, \\$this\\(App\\\\Models\\\\User\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\Project\\>\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^PHPDoc tag @use contains generic type Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory\\<Database\\\\Factories\\\\UserFactory\\> but trait Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory is not generic\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\UserNotificationSetting\\:\\:user\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\UserNotificationSetting\\)\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\UserNotificationSetting\\>\\.$#"
+			count: 1
+			path: app/Models/UserNotificationSetting.php
+
+		-
+			message: "#^Unable to resolve the template type TKey in call to function collect$#"
+			count: 1
+			path: app/Services/AttentionService.php
+
+		-
+			message: "#^Method App\\\\Services\\\\InstitutionOverview\\:\\:summaries\\(\\) should return Illuminate\\\\Support\\\\Collection\\<int, array\\{institution\\: App\\\\Models\\\\Institution, open\\: int\\<0, max\\>, waiting\\: int\\<0, max\\>, overdue\\: int\\<0, max\\>, longest\\: int\\|null\\}\\> but returns Illuminate\\\\Support\\\\Collection\\<int, array\\{institution\\: App\\\\Models\\\\Institution, open\\: int, waiting\\: int, overdue\\: int, longest\\: mixed\\}\\>\\.$#"
+			count: 1
+			path: app/Services/InstitutionOverview.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$administrative_case_id\\.$#"
+			count: 1
+			path: database/migrations/2026_10_23_000000_align_data_model_with_revised_plan.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$administrative_case_item_id\\.$#"
+			count: 1
+			path: database/migrations/2026_10_23_000000_align_data_model_with_revised_plan.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$id\\.$#"
+			count: 1
+			path: database/migrations/2026_10_23_000000_align_data_model_with_revised_plan.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$name\\.$#"
+			count: 1
+			path: database/migrations/2026_10_23_000000_align_data_model_with_revised_plan.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$project_id\\.$#"
+			count: 1
+			path: database/migrations/2026_10_23_000000_align_data_model_with_revised_plan.php

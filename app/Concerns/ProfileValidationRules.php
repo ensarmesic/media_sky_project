@@ -42,6 +42,8 @@ trait ProfileValidationRules
             'required',
             'string',
             'email',
+            // Laravel 10: email pravilo propušta CR/LF (GHSA-5vg9-5847-vvmq).
+            'not_regex:/[\r\n]/',
             'max:255',
             $userId === null
                 ? Rule::unique(User::class)

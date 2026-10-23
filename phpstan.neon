@@ -1,6 +1,8 @@
 includes:
     - vendor/larastan/larastan/extension.neon
     - vendor/nesbot/carbon/extension.neon
+    # Laravel 10 (staging na PHP 8.1): stariji generički tipovi relacija u frameworku.
+    - phpstan-baseline.neon
 
 parameters:
     paths:

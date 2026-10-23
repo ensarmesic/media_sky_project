@@ -61,6 +61,21 @@ class SystemHealthTest extends TestCase
         $this->assertSame([], $this->health()->warnings());
     }
 
+    public function test_no_scheduler_warning_on_server_without_cron(): void
+    {
+        config(['projectflow.health.scheduler_expected' => false]);
+
+        $this->assertSame([], $this->health()->warnings());
+    }
+
+    public function test_top_banner_offset_moves_page_below_server_banner(): void
+    {
+        $this->get(route('login'))->assertDontSee('--pf-top-banner', false);
+
+        config(['app.top_banner_offset' => 28]);
+        $this->get(route('login'))->assertSee('--pf-top-banner: 28px;', false);
+    }
+
     public function test_warns_when_more_than_twenty_jobs_are_pending(): void
     {
         $this->health()->recordSchedulerRun();

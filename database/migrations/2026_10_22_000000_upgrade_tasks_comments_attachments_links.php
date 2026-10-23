@@ -37,7 +37,7 @@ return new class extends Migration
 
         Schema::table('administrative_case_items', function (Blueprint $table) {
             $table->string('priority')->default('medium')->after('status')->index();
-            $table->index(['administrative_case_id', 'is_active', 'position']);
+            $table->index(['administrative_case_id', 'is_active', 'position'], 'case_items_case_active_position_index');
             $table->index('due_date', 'case_items_due_date_lookup_index');
         });
 
@@ -80,7 +80,7 @@ return new class extends Migration
 
         Schema::table('administrative_case_items', function (Blueprint $table) {
             $table->dropIndex('case_items_due_date_lookup_index');
-            $table->dropIndex(['administrative_case_id', 'is_active', 'position']);
+            $table->dropIndex('case_items_case_active_position_index');
             $table->dropIndex(['priority']);
             $table->dropColumn('priority');
         });

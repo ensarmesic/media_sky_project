@@ -54,6 +54,7 @@ class BackupTest extends TestCase
     {
         // Izvor je zaseban SQLite fajl (RefreshDatabase drži testnu bazu u transakciji, a VACUUM to ne dozvoljava).
         touch($path = $this->root.'/izvor.sqlite');
+        $originalDefault = config('database.default');
         config(['database.connections.backup_source' => [...config('database.connections.sqlite'), 'database' => $path], 'database.default' => 'backup_source']);
         $this->artisan('migrate', ['--database' => 'backup_source', '--force' => true]);
         DB::connection('backup_source')->table('users')->insert(['name' => 'Ensar', 'username' => 'ensar', 'password' => 'x', 'role' => 'administrator']);
@@ -71,7 +72,7 @@ class BackupTest extends TestCase
         $this->assertTrue($names->contains(fn (string $name) => str_ends_with($name, 'sqlite/database.sqlite')), $names->implode(', '));
         $this->assertDirectoryDoesNotExist(storage_path('app/backup-temp/sqlite'));
         DB::purge('backup_source');
-        config(['database.default' => 'sqlite']);
+        config(['database.default' => $originalDefault]);
     }
 
     public function test_backup_commands_are_scheduled(): void

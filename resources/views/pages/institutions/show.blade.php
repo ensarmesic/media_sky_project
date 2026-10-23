@@ -91,7 +91,7 @@ new #[Title('Institucija')] class extends Component {
             'contact.address' => ['nullable', 'string', 'max:255'],
             'contact.contact_person' => ['nullable', 'string', 'max:255'],
             'contact.phone' => ['nullable', 'string', 'max:50'],
-            'contact.email' => ['nullable', 'email', 'max:255'],
+            'contact.email' => ['nullable', 'email', 'not_regex:/[\r\n]/', 'max:255'],
             'contact.notes' => ['nullable', 'string', 'max:2000'],
         ], [], [
             'contact.name' => 'naziv', 'contact.type' => 'vrsta', 'contact.address' => 'adresa', 'contact.contact_person' => 'kontakt osoba',

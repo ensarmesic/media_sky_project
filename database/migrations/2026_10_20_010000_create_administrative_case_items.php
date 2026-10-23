@@ -33,7 +33,7 @@ return new class extends Migration
         });
         Schema::create('administrative_case_item_activities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('administrative_case_item_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('administrative_case_item_id')->constrained(indexName: 'case_item_activities_item_id_foreign')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('event_type');
             $table->string('title');
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->timestamps();
         });
         Schema::create('administrative_case_item_task', function (Blueprint $table) {
-            $table->foreignId('administrative_case_item_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('administrative_case_item_id')->constrained(indexName: 'case_item_task_item_id_foreign')->cascadeOnDelete();
             $table->foreignId('task_id')->constrained()->cascadeOnDelete();
             $table->primary(['administrative_case_item_id', 'task_id']);
         });

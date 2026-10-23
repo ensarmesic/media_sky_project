@@ -18,7 +18,8 @@ class NotifyAdminsAboutBackup
         $title = match (true) {
             $event instanceof BackupHasFailed => 'Backup nije uspio: '.$event->exception->getMessage(),
             $event instanceof CleanupHasFailed => 'Čišćenje starih backupa nije uspjelo: '.$event->exception->getMessage(),
-            default => 'Problem s backupom ('.$event->diskName.'): '.$event->failureMessages->pluck('message')->implode(' '),
+            default => 'Problem s backupom ('.$event->backupDestinationStatus->backupDestination()->diskName().'): '
+                .$event->backupDestinationStatus->getHealthCheckFailure()?->exception()->getMessage(),
         };
 
         app(NotificationDispatchService::class)->dispatch(

@@ -36,7 +36,7 @@ new #[Title('Korisnici')] class extends Component {
         $data = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:100', 'alpha_dash:ascii', Rule::unique('users', 'username')->ignore($user)],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
+            'email' => ['nullable', 'email', 'not_regex:/[\r\n]/', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'role' => ['required', Rule::enum(UserRole::class)],
             'grammatical_gender' => ['nullable', Rule::enum(GrammaticalGender::class)],
             'password' => [$user->exists ? 'nullable' : 'required', 'confirmed', Password::min(8)],

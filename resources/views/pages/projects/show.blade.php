@@ -148,7 +148,9 @@ new #[Title('Projekat')] class extends Component {
     #[Computed]
     public function progress(): ?int
     {
-        return $this->project->setRelation('administrativeCases', $this->cases)->administrativeProgress();
+        // Na kopiji: projekat (Livewire svojstvo) ne smije dobiti predmete koji pokazuju nazad na njega,
+        // jer Laravel 10 pri serijalizaciji takvog kruga ulazi u beskonačnu rekurziju.
+        return (clone $this->project)->setRelation('administrativeCases', $this->cases)->administrativeProgress();
     }
 
     #[Computed]
@@ -658,7 +660,7 @@ new #[Title('Projekat')] class extends Component {
                                 {{ $this->{$field} !== '' ? $this->{$field} : ($canUpdate ? 'Klik za unos…' : '–') }}
                             </div>
                             @if($canUpdate)
-                                <textarea x-show="editing" x-cloak x-ref="input" wire:model.blur="{{ $field }}" x-on:blur="editing = false" x-on:keydown.enter.prevent="$el.blur()" rows="2" placeholder="{{ $placeholder }}" aria-label="{{ $label }}"
+                                <textarea x-show="editing" x-cloak x-ref="input" wire:model.live.blur="{{ $field }}" x-on:blur="editing = false" x-on:keydown.enter.prevent="$el.blur()" rows="2" placeholder="{{ $placeholder }}" aria-label="{{ $label }}"
                                     class="mt-1 w-full rounded-md border border-zinc-200 bg-white p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-zinc-700 dark:bg-zinc-900"></textarea>
                                 <flux:error :name="$field" />
                             @endif
